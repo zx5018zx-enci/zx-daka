@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DayRecord,
   EMPTY_RECORD,
@@ -23,7 +23,8 @@ type User = {
 }
 
 type SharedProfile = Pick<User, 'displayName' | 'userCode'> & { records: Records }
-type ModalName = 'calendar' | 'weight' | 'chart' | 'lookup' | 'photo' | 'exercise' | 'food' | null
+type GroupMember = Pick<User, 'displayName' | 'userCode'> & { checked: boolean }
+type ModalName = 'calendar' | 'weight' | 'chart' | 'lookup' | 'group' | 'photo' | 'exercise' | 'food' | null
 type SyncState = 'loading' | 'saving' | 'saved' | 'error'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
@@ -279,6 +280,99 @@ function LookupModal({ onFound, onClose }: { onFound: (profile: SharedProfile) =
   )
 }
 
+function GroupModal({ members, loading, onSave, onClose }: { members: GroupMember[]; loading: boolean; onSave: (codes: string[]) => Promise<void>; onClose: () => void }) {
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const addMember = async (event: FormEvent) => {
+    event.preventDefault()
+    const normalized = code.trim().toUpperCase()
+    if (!/^[A-Z0-9]{8}$/.test(normalized)) {
+      setError('请输入正确的 8 位用户码')
+      return
+    }
+    if (members.some((member) => member.userCode === normalized)) {
+      setError('这位用户已经在同行成员中')
+      return
+    }
+    setError('')
+    setSaving(true)
+    try {
+      await onSave([...members.map((member) => member.userCode), normalized])
+      setCode('')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '关联失败，请稍后重试')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const removeMember = async (member: GroupMember) => {
+    setSaving(true)
+    setError('')
+    try {
+      await onSave(members.filter((item) => item.userCode !== member.userCode).map((item) => item.userCode))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '移除失败，请稍后重试')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <ModalHeading eyebrow="一起坚持的人" title="同行成员" onClose={onClose} />
+      <p className="group-modal-intro">输入对方的用户码。关联后，你们当天的打卡状态会共同点亮月亮。</p>
+      <form className="group-add-form" onSubmit={addMember}>
+        <input className="code-input" aria-label="成员用户码" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="输入 8 位用户码" maxLength={8} />
+        <button className="primary-button" type="submit" disabled={saving || loading}>{saving ? '保存中…' : '添加'}</button>
+      </form>
+      {error ? <p className="form-error">{error}</p> : null}
+      {loading ? <p className="group-empty">正在同步成员状态…</p> : members.length === 0 ? <p className="group-empty">还没有同行成员，添加后页面才会显示月相。</p> : (
+        <div className="group-member-list">
+          {members.map((member) => (
+            <div key={member.userCode}>
+              <span className={member.checked ? 'checked' : ''}>{member.checked ? '✓' : ''}</span>
+              <p><strong>{member.displayName}</strong><small>{member.userCode} · {member.checked ? '今天已打卡' : '今天未打卡'}</small></p>
+              <button type="button" disabled={saving} onClick={() => removeMember(member)}>移除</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+function GroupMoon({ members, selfChecked, onOpen }: { members: GroupMember[]; selfChecked: boolean; onOpen: () => void }) {
+  if (members.length === 0) return null
+  const total = members.length + 1
+  const checkedCount = Number(selfChecked) + members.filter((member) => member.checked).length
+  const phase = checkedCount === 0 ? 'empty' : checkedCount === total ? 'full' : 'partial'
+  const message = phase === 'full'
+    ? '全员完成，今晚月色正圆'
+    : phase === 'empty'
+      ? '今天还没有人打卡'
+      : `还差 ${total - checkedCount} 人，月亮就圆满了`
+
+  return (
+    <button className={`group-moon-panel ${phase}`} onClick={onOpen} aria-label={`同行打卡：${checkedCount}/${total} 人已完成`}>
+      <span className="group-moon-picture" aria-hidden="true" />
+      <span className="group-moon-copy">
+        <small>同行月相 · 每 30 秒更新</small>
+        <strong><b>{checkedCount}</b> / {total} 人今天已打卡</strong>
+        <em>{message}</em>
+      </span>
+      <span className="group-member-dots" aria-hidden="true">
+        <i className={selfChecked ? 'checked' : ''}>我</i>
+        {members.slice(0, 5).map((member) => <i key={member.userCode} className={member.checked ? 'checked' : ''}>{member.displayName.slice(0, 1)}</i>)}
+        {members.length > 5 ? <b>+{members.length - 5}</b> : null}
+      </span>
+      <span className="group-moon-arrow">管理 ›</span>
+    </button>
+  )
+}
+
 function WeightChartModal({ records, onClose }: { records: Records; onClose: () => void }) {
   const points = Object.entries(records)
     .filter((entry): entry is [string, DayRecord & { weight: number }] => entry[1].weight !== null)
@@ -405,6 +499,11 @@ const demoRecords = (): Records => {
   }
 }
 
+const DEMO_GROUP: GroupMember[] = [
+  { displayName: '小洁', userCode: 'MOON0001', checked: true },
+  { displayName: '小赵', userCode: 'MOON0002', checked: false },
+]
+
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const today = formatDate(new Date())
   const demoMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demo')
@@ -413,6 +512,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [loaded, setLoaded] = useState(demoMode)
   const [showImport, setShowImport] = useState(false)
   const [syncState, setSyncState] = useState<SyncState>(demoMode ? 'saved' : 'loading')
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>(demoMode ? DEMO_GROUP : [])
+  const [groupLoading, setGroupLoading] = useState(!demoMode)
   const [sharedProfile, setSharedProfile] = useState<SharedProfile | null>(null)
   const [selected, setSelected] = useState(today)
   const [modal, setModal] = useState<ModalName>(null)
@@ -427,6 +528,30 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     [visibleRecords, today, selected],
   )
   const weekDates = Array.from({ length: 7 }, (_, index) => shiftDate(selected, index - 3))
+
+  const refreshGroup = useCallback(async () => {
+    if (demoMode) return
+    try {
+      const result = await request<{ members: GroupMember[] }>(`/api/groups?date=${today}`)
+      setGroupMembers(result.members)
+    } catch {
+      // The group endpoint is additive; existing check-in flows stay available if it is temporarily unavailable.
+    } finally {
+      setGroupLoading(false)
+    }
+  }, [demoMode, today])
+
+  useEffect(() => {
+    void refreshGroup()
+    if (demoMode) return
+    const timer = window.setInterval(refreshGroup, 30_000)
+    const refreshWhenVisible = () => document.visibilityState === 'visible' && void refreshGroup()
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
+  }, [demoMode, refreshGroup])
 
   useEffect(() => {
     if (demoMode) return
@@ -488,6 +613,18 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     const key = kind === 'exercise' ? 'exercises' : 'foods'
     updateRecord((record) => ({ ...record, [key]: record[key].filter((entry) => entry.id !== item.id) }), '记录已删除')
   }
+  const saveGroupCodes = async (codes: string[]) => {
+    if (demoMode) {
+      setGroupMembers((current) => codes.map((code) => current.find((member) => member.userCode === code) ?? { displayName: `同行 ${code.slice(-2)}`, userCode: code, checked: false }))
+      return
+    }
+    const result = await request<{ members: GroupMember[] }>(`/api/groups?date=${today}`, {
+      method: 'PUT',
+      body: JSON.stringify({ codes }),
+    })
+    if (result.members.length < codes.length) throw new Error('没有找到该用户码，请检查后重试')
+    setGroupMembers(result.members)
+  }
   const selectedDate = parseDate(selected)
   const displayDate = selected === today ? '今天' : `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日`
 
@@ -496,7 +633,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       <header className="hero">
         <nav>
           <button className="brand brand-button" onClick={() => setModal('photo')} aria-label="查看 ZX 赵祥高清图"><span>祥</span><strong>ZX打卡</strong></button>
-          <div className="nav-actions"><button className="find-user-button" onClick={() => setModal('lookup')}>⌕ 查用户</button><button className="calendar-button" onClick={() => setModal('calendar')}><span>▦</span> 月历</button></div>
+          <div className="nav-actions"><button className="group-button" onClick={() => setModal('group')}>☾ 同行</button><button className="find-user-button" onClick={() => setModal('lookup')}>⌕ 查用户</button><button className="calendar-button" onClick={() => setModal('calendar')}><span>▦</span> 月历</button></div>
         </nav>
         <div className="account-bar">
           <div className="account-person"><span>{user.displayName.slice(0, 1)}</span><div><strong>{user.displayName}</strong><small>@{user.username}</small></div></div>
@@ -525,6 +662,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           <div className="progress-track"><i style={{ width: `${count * 20}%` }} /></div>
           <p>{count === 5 ? '全部完成，今天的你真棒！' : count === 0 ? '从一件小事开始记录吧' : `再完成 ${5 - count} 项，给今天一个漂亮的句号`}</p>
         </div>
+        {!sharedProfile ? <GroupMoon members={groupMembers} selfChecked={hasAnyCheckin(records[today])} onOpen={() => setModal('group')} /> : null}
       </header>
       <main>
         {showImport && !readOnly ? <section className="import-banner"><div><strong>发现这台设备上的旧记录</strong><p>要导入到“{user.displayName}”的云端账号吗？</p></div><div><button onClick={() => { localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false) }}>暂不导入</button><button className="import-primary" onClick={() => { setRecords(legacyRecords); localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false); setToast('旧记录已导入，正在同步到云端') }}>立即导入</button></div></section> : null}
@@ -552,6 +690,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       {modal === 'weight' && !readOnly ? <WeightModal value={currentRecord.weight} onSave={(value) => { updateRecord((record) => ({ ...record, weight: value })); setModal(null) }} onClose={() => setModal(null)} /> : null}
       {modal === 'chart' ? <WeightChartModal records={visibleRecords} onClose={() => setModal(null)} /> : null}
       {modal === 'lookup' ? <LookupModal onFound={setSharedProfile} onClose={() => setModal(null)} /> : null}
+      {modal === 'group' ? <GroupModal members={groupMembers} loading={groupLoading} onSave={saveGroupCodes} onClose={() => setModal(null)} /> : null}
       {modal === 'photo' ? <Modal onClose={() => setModal(null)} wide><ModalHeading eyebrow="ZX 赵祥" title="今天必须开心幸福！" onClose={() => setModal(null)} /><figure className="photo-preview"><img src="/zx-zhaoxiang-photo.png?v=1" alt="ZX 赵祥运动主题高清图" /><figcaption>今天必须开心幸福！</figcaption></figure></Modal> : null}
       {(modal === 'exercise' || modal === 'food') ? <EntryModal kind={modal} item={editingItem} onSave={(item) => saveEntry(modal, item)} onClose={() => { setModal(null); setEditingItem(undefined) }} /> : null}
       {toast ? <div className="toast" role="status"><span>✓</span>{toast}</div> : null}

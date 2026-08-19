@@ -1713,3 +1713,236 @@ footer p {
   }
   .stat-card-value b { font-size: 30px; }
 }
+
+.group-button {
+  border: 1px solid rgba(59, 95, 70, .15);
+  padding: 9px 13px;
+  color: var(--green-900);
+  background: rgba(255, 255, 255, .5);
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.group-moon-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1040px);
+  min-height: 118px;
+  margin: 14px auto 0;
+  padding: 14px 20px 14px 16px;
+  display: grid;
+  grid-template-columns: 88px minmax(210px, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 24px;
+  color: #fff;
+  text-align: left;
+  background: linear-gradient(120deg, #09152a, #10203c 60%, #172a45);
+  box-shadow: 0 15px 34px rgba(15, 30, 52, .17);
+  cursor: pointer;
+}
+.group-moon-panel:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 24% 20%, rgba(255, 224, 150, .08), transparent 38%);
+}
+.group-moon-picture {
+  position: relative;
+  z-index: 1;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  background-image: url("/group-moon-phases.jpg");
+  background-repeat: no-repeat;
+  background-size: 300% auto;
+  background-position-y: 50%;
+  box-shadow: 0 0 24px rgba(231, 205, 143, .13);
+}
+.group-moon-panel.empty .group-moon-picture { background-position-x: 0; }
+.group-moon-panel.partial .group-moon-picture { background-position-x: 50%; }
+.group-moon-panel.full .group-moon-picture {
+  background-position-x: 100%;
+  box-shadow: 0 0 30px rgba(255, 224, 154, .45);
+}
+.group-moon-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.group-moon-copy small {
+  color: #a9b8cf;
+  font-size: 10px;
+  letter-spacing: .09em;
+}
+.group-moon-copy > strong {
+  margin-top: 5px;
+  font-family: "Noto Serif SC", serif;
+  font-size: 18px;
+  line-height: 1.25;
+}
+.group-moon-copy > strong b {
+  color: #f6d684;
+  font-size: 25px;
+}
+.group-moon-copy em {
+  margin-top: 5px;
+  color: #d6deea;
+  font-size: 11px;
+  font-style: normal;
+}
+.group-member-dots {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  padding-left: 7px;
+}
+.group-member-dots i,
+.group-member-dots b {
+  width: 30px;
+  height: 30px;
+  margin-left: -7px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #172a45;
+  border-radius: 50%;
+  color: #8595aa;
+  background: #26364d;
+  font-size: 10px;
+  font-style: normal;
+}
+.group-member-dots i.checked {
+  color: #203122;
+  background: #e7cc7d;
+}
+.group-moon-arrow {
+  position: relative;
+  z-index: 1;
+  color: #bac7d9;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.group-modal-intro {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.group-add-form {
+  display: grid;
+  grid-template-columns: 1fr 96px;
+  gap: 10px;
+  margin-top: 16px;
+}
+.group-add-form input {
+  min-width: 0;
+  height: 50px;
+  padding: 0 14px;
+  border: 1px solid #d8dfd7;
+  border-radius: 14px;
+  background: #fff;
+}
+.group-add-form .primary-button { margin: 0; }
+.group-empty {
+  margin: 18px 0 0;
+  padding: 24px 15px;
+  color: var(--muted);
+  text-align: center;
+  background: var(--green-100);
+  border-radius: 17px;
+  font-size: 12px;
+}
+.group-member-list {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+.group-member-list > div {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.group-member-list > div:last-child { border-bottom: 0; }
+.group-member-list > div > span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--green-300);
+  border-radius: 50%;
+  color: transparent;
+  font-size: 12px;
+  font-weight: 800;
+}
+.group-member-list > div > span.checked {
+  color: #fff;
+  border-color: var(--green-700);
+  background: var(--green-700);
+}
+.group-member-list p {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.group-member-list strong { font-size: 13px; }
+.group-member-list small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.group-member-list button {
+  border: 0;
+  padding: 6px;
+  color: #a66b61;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+@media (max-width: 700px) {
+  .nav-actions { gap: 5px; }
+  .group-button,
+  .find-user-button,
+  .calendar-button {
+    padding: 8px 9px;
+    border-radius: 12px;
+    font-size: 11px;
+  }
+  .group-moon-panel {
+    min-height: 116px;
+    padding: 14px;
+    grid-template-columns: 72px 1fr;
+    gap: 12px;
+    border-radius: 20px;
+  }
+  .group-moon-picture {
+    width: 68px;
+    height: 68px;
+  }
+  .group-moon-copy > strong { font-size: 15px; }
+  .group-moon-copy > strong b { font-size: 22px; }
+  .group-moon-copy em { padding-right: 30px; }
+  .group-member-dots { grid-column: 1 / -1; padding-left: 7px; }
+  .group-member-dots i,
+  .group-member-dots b {
+    width: 27px;
+    height: 27px;
+  }
+  .group-moon-arrow {
+    position: absolute;
+    right: 14px;
+    bottom: 17px;
+  }
+  .group-add-form { grid-template-columns: 1fr 82px; }
+  .group-add-form input { height: 54px; font-size: 16px; }
+}
