@@ -506,13 +506,15 @@ const DEMO_GROUP: GroupMember[] = [
 
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const today = formatDate(new Date())
-  const demoMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demo')
+  const demoParams = new URLSearchParams(window.location.search)
+  const demoMode = import.meta.env.DEV && demoParams.has('demo')
+  const demoWithoutGroup = demoMode && demoParams.get('group') === 'none'
   const [legacyRecords] = useState(loadLegacyRecords)
   const [records, setRecords] = useState<Records>(() => demoMode ? demoRecords() : {})
   const [loaded, setLoaded] = useState(demoMode)
   const [showImport, setShowImport] = useState(false)
   const [syncState, setSyncState] = useState<SyncState>(demoMode ? 'saved' : 'loading')
-  const [groupMembers, setGroupMembers] = useState<GroupMember[]>(demoMode ? DEMO_GROUP : [])
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>(demoMode && !demoWithoutGroup ? DEMO_GROUP : [])
   const [groupLoading, setGroupLoading] = useState(!demoMode)
   const [sharedProfile, setSharedProfile] = useState<SharedProfile | null>(null)
   const [selected, setSelected] = useState(today)
@@ -662,9 +664,9 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           <div className="progress-track"><i style={{ width: `${count * 20}%` }} /></div>
           <p>{count === 5 ? '全部完成，今天的你真棒！' : count === 0 ? '从一件小事开始记录吧' : `再完成 ${5 - count} 项，给今天一个漂亮的句号`}</p>
         </div>
-        {!sharedProfile ? <GroupMoon members={groupMembers} selfChecked={hasAnyCheckin(records[today])} onOpen={() => setModal('group')} /> : null}
       </header>
       <main>
+        {!sharedProfile ? <GroupMoon members={groupMembers} selfChecked={hasAnyCheckin(records[today])} onOpen={() => setModal('group')} /> : null}
         {showImport && !readOnly ? <section className="import-banner"><div><strong>发现这台设备上的旧记录</strong><p>要导入到“{user.displayName}”的云端账号吗？</p></div><div><button onClick={() => { localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false) }}>暂不导入</button><button className="import-primary" onClick={() => { setRecords(legacyRecords); localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false); setToast('旧记录已导入，正在同步到云端') }}>立即导入</button></div></section> : null}
         <section className="date-section" aria-label="日期选择">
           <button className="date-arrow" onClick={() => setSelected(shiftDate(selected, -7))} aria-label="上一周">‹</button>

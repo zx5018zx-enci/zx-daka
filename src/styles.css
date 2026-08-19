@@ -1728,7 +1728,7 @@ footer p {
   z-index: 1;
   width: min(100%, 1040px);
   min-height: 118px;
-  margin: 14px auto 0;
+  margin: 0 auto 22px;
   padding: 14px 20px 14px 16px;
   display: grid;
   grid-template-columns: 88px minmax(210px, 1fr) auto auto;
@@ -1930,6 +1930,7 @@ footer p {
   }
   .group-moon-panel {
     min-height: 116px;
+    margin-bottom: 18px;
     padding: 14px;
     grid-template-columns: 72px 1fr;
     gap: 12px;
