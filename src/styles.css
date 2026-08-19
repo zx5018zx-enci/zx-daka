@@ -300,39 +300,6 @@ nav {
   color: #6d9178;
   font-style: normal;
 }
-.streak-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 16px 20px;
-  background: #fffdf7b8;
-  border: 1px solid rgba(255, 255, 255, .7);
-  border-radius: 22px;
-  box-shadow: 0 12px 35px #425f4b17;
-}
-.streak-badge > span {
-  font-size: 25px;
-}
-.streak-badge div {
-  display: flex;
-  flex-direction: column;
-}
-.streak-badge strong {
-  font-family: "Noto Serif SC", serif;
-  font-size: 26px;
-  line-height: 1;
-  color: var(--green-900);
-}
-.streak-badge small {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.streak-badge b {
-  align-self: flex-start;
-  font-size: 12px;
-  color: var(--green-700);
-}
 .progress-card {
   max-width: 1040px;
   margin: auto;
@@ -1434,16 +1401,6 @@ footer p {
   .viewing-banner {
     margin: 37px 0 -29px;
   }
-  .streak-badge {
-    padding: 12px;
-    border-radius: 17px;
-  }
-  .streak-badge > span {
-    display: none;
-  }
-  .streak-badge strong {
-    font-size: 23px;
-  }
   .progress-card {
     padding: 14px 16px;
     grid-template-columns: 100px 1fr;
@@ -1629,47 +1586,76 @@ footer p {
 
 /* Solid dots represent all five completed items; hollow dots represent omissions. */
 .checkin-stats {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(142px, 1fr));
+  width: min(360px, 100%);
+  gap: 10px;
 }
-.cumulative-badge {
+.stat-card {
+  position: relative;
+  min-width: 0;
+  padding: 15px 16px 14px;
+  overflow: hidden;
+  background: rgba(255, 253, 247, .82);
+  border: 1px solid rgba(255, 255, 255, .82);
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(66, 95, 75, .09);
+}
+.stat-card:before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--card-accent);
+}
+.stat-card-streak { --card-accent: #d6974f; }
+.stat-card-total { --card-accent: #6e9f7f; }
+.stat-card-heading {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 13px 20px;
-  background: #fffdf7b8;
-  border: 1px solid rgba(255,255,255,.7);
-  border-radius: 22px;
-  box-shadow: 0 12px 35px #425f4b17;
+  gap: 7px;
+  color: var(--muted);
 }
-.cumulative-badge > span { font-size: 22px; }
-.cumulative-badge > div {
+.stat-card-heading > span {
   display: grid;
-  grid-template-columns: auto auto;
-  align-items: end;
-  column-gap: 7px;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  color: var(--card-accent);
+  background: color-mix(in srgb, var(--card-accent) 13%, transparent);
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 800;
 }
-.cumulative-badge strong {
-  font-family: "Noto Serif SC", serif;
-  font-size: 26px;
-  line-height: 1;
+.stat-card-heading strong {
+  font-size: 12px;
+  letter-spacing: .08em;
+}
+.stat-card-value {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 8px;
   color: var(--green-900);
 }
-.cumulative-badge small { color: var(--muted); font-size: 11px; }
-.cumulative-badge em {
-  grid-column: 1 / -1;
-  margin-top: 4px;
-  color: var(--green-700);
+.stat-card-value b {
+  font-family: "Noto Serif SC", serif;
+  font-size: 34px;
+  line-height: 1;
+}
+.stat-card-value span {
+  font-size: 12px;
+  font-weight: 700;
+}
+.stat-card p {
+  margin: 7px 0 0;
+  color: var(--muted);
   font-size: 10px;
-  font-style: normal;
   white-space: nowrap;
 }
-.cumulative-badge b {
-  align-self: flex-start;
-  font-size: 12px;
+.stat-card p strong {
   color: var(--green-700);
+  font-size: 12px;
 }
 .date-strip button i.incomplete,
 .day-grid button i.incomplete,
@@ -1711,9 +1697,19 @@ footer p {
 .weight-history-list strong { color: var(--green-900); font-size: 13px; }
 
 @media (max-width: 700px) {
-  .checkin-stats { gap: 5px; }
-  .cumulative-badge { padding: 9px 12px; border-radius: 17px; }
-  .cumulative-badge > span { display: none; }
-  .cumulative-badge strong { font-size: 21px; }
-  .cumulative-badge em { font-size: 9px; }
+  .hero-copy {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+  .checkin-stats {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .stat-card {
+    padding: 13px 13px 12px;
+    border-radius: 17px;
+  }
+  .stat-card-value b { font-size: 30px; }
 }

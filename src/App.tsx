@@ -505,8 +505,16 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         <div className="hero-copy" id="top">
           <div><p className="hero-kicker">{sharedProfile ? `用户码 ${sharedProfile.userCode} · 只读查看` : '慢慢来，也是一种前进'}</p><h1>{displayDate}，<br /><em>照顾好自己。</em></h1></div>
           <div className="checkin-stats">
-            <div className="streak-badge"><span>🔥</span><div><strong>{stats.streak}</strong><small>连续打卡</small></div><b>天</b></div>
-            <div className="cumulative-badge"><span>🗓</span><div><strong>{stats.cumulativeDays}</strong><small>累计打卡</small><em>今天是第 {stats.todayNumber} 天</em></div><b>天</b></div>
+            <div className="stat-card stat-card-streak">
+              <div className="stat-card-heading"><span aria-hidden="true">🔥</span><strong>连续打卡</strong></div>
+              <div className="stat-card-value"><b>{stats.streak}</b><span>天</span></div>
+              <p>当前连续记录</p>
+            </div>
+            <div className="stat-card stat-card-total">
+              <div className="stat-card-heading"><span aria-hidden="true">总</span><strong>累计打卡</strong></div>
+              <div className="stat-card-value"><b>{stats.cumulativeDays}</b><span>天</span></div>
+              <p>今天是第 <strong>{stats.todayNumber}</strong> 天</p>
+            </div>
           </div>
         </div>
         <div className="progress-card">
