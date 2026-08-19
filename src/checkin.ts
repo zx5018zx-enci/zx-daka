@@ -73,7 +73,7 @@ export const shiftDate = (value: string, days: number): string => {
   return formatDate(date)
 }
 
-export const getCheckinStats = (records: Records, today: string) => {
+export const getCheckinStats = (records: Records, today: string, currentDate = today) => {
   const checkedDates = Object.keys(records)
     .filter((date) => hasAnyCheckin(records[date]))
     .sort()
@@ -85,17 +85,16 @@ export const getCheckinStats = (records: Records, today: string) => {
     streakCursor = shiftDate(streakCursor, -1)
   }
 
-  const checkedBeforeToday = checkedDates.filter((date) => date < today).length
-  const todayNumber = checkedBeforeToday + 1
+  const checkedBeforeCurrentDate = checkedDates.filter((date) => date < currentDate).length
+  const currentDayNumber = checkedBeforeCurrentDate + 1
 
   return {
     streak,
     cumulativeDays: checkedDates.length,
-    todayNumber,
+    currentDayNumber,
     trackingStart: checkedDates[0] ?? today,
   }
 }
 
 export const shouldShowDateDot = (date: string, today: string, trackingStart: string): boolean =>
   date <= today && date >= trackingStart
-

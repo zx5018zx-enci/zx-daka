@@ -422,7 +422,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const readOnly = sharedProfile !== null
   const currentRecord = visibleRecords[selected] ?? EMPTY_RECORD
   const count = completionCount(currentRecord)
-  const stats = useMemo(() => getCheckinStats(visibleRecords, today), [visibleRecords, today])
+  const stats = useMemo(
+    () => getCheckinStats(visibleRecords, today, selected),
+    [visibleRecords, today, selected],
+  )
   const weekDates = Array.from({ length: 7 }, (_, index) => shiftDate(selected, index - 3))
 
   useEffect(() => {
@@ -513,7 +516,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             <div className="stat-card stat-card-total">
               <div className="stat-card-heading"><span aria-hidden="true">总</span><strong>累计打卡</strong></div>
               <div className="stat-card-value"><b>{stats.cumulativeDays}</b><span>天</span></div>
-              <p>今天是第 <strong>{stats.todayNumber}</strong> 天</p>
+              <p>当前是第 <strong>{stats.currentDayNumber}</strong> 天</p>
             </div>
           </div>
         </div>

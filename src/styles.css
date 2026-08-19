@@ -1650,12 +1650,12 @@ footer p {
 .stat-card p {
   margin: 7px 0 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .stat-card p strong {
   color: var(--green-700);
-  font-size: 12px;
+  font-size: 14px;
 }
 .date-strip button i.incomplete,
 .day-grid button i.incomplete,
