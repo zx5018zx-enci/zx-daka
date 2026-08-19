@@ -1759,7 +1759,7 @@ footer p {
   overflow: hidden;
   background-image: url("/group-moon-phases.jpg");
   background-repeat: no-repeat;
-  background-size: 300% auto;
+  background-size: 365% auto;
   background-position-y: 50%;
   box-shadow: 0 0 24px rgba(241, 220, 162, .2);
 }
@@ -1772,10 +1772,10 @@ footer p {
   mix-blend-mode: color;
   pointer-events: none;
 }
-.group-moon-panel.empty .group-moon-picture { background-position-x: 0; }
+.group-moon-panel.empty .group-moon-picture { background-position-x: 6.5%; }
 .group-moon-panel.partial .group-moon-picture { background-position-x: 50%; }
 .group-moon-panel.full .group-moon-picture {
-  background-position-x: 100%;
+  background-position-x: 93.5%;
   box-shadow: 0 0 30px rgba(255, 224, 154, .45);
 }
 .group-moon-copy {
