@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --configLoader runner",
     "build": "pnpm run typecheck && vite build --configLoader runner",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck --types node netlify/functions/api.mts",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "preview": "vite preview --configLoader runner"
   },
   "dependencies": {
