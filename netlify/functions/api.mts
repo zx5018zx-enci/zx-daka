@@ -24,6 +24,26 @@ export default async (request: Request, _context: Context) => {
   HOP_BY_HOP_HEADERS.forEach((header) => requestHeaders.delete(header))
   requestHeaders.delete('accept-encoding')
 
+  // The legacy backend validates Origin/Referer against its own host. Rewrite
+  // same-site values so the browser-facing domain still passes the check, and
+  // leave cross-site values untouched so the legacy CSRF guard keeps working.
+  const rewriteUrl = (value: string | null): string | null => {
+    if (!value) return value
+    try {
+      const url = new URL(value)
+      if (url.origin !== incomingUrl.origin) return value
+      return new URL(url.pathname + url.search, LEGACY_DEPLOY_ORIGIN).toString()
+    } catch {
+      return value
+    }
+  }
+  const origin = rewriteUrl(requestHeaders.get('origin'))
+  const referer = rewriteUrl(requestHeaders.get('referer'))
+  if (origin) requestHeaders.set('origin', origin)
+  else requestHeaders.delete('origin')
+  if (referer) requestHeaders.set('referer', referer)
+  else requestHeaders.delete('referer')
+
   const response = await fetch(targetUrl, {
     method: request.method,
     headers: requestHeaders,
