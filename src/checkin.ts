@@ -87,14 +87,16 @@ export const getCheckinStats = (records: Records, today: string, currentDate = t
 
   const checkedBeforeCurrentDate = checkedDates.filter((date) => date < currentDate).length
   const currentDayNumber = checkedBeforeCurrentDate + 1
+  const currentChecked = hasAnyCheckin(records[currentDate])
 
   return {
     streak,
     cumulativeDays: checkedDates.length,
     currentDayNumber,
+    currentChecked,
     trackingStart: checkedDates[0] ?? today,
   }
 }
 
-export const shouldShowDateDot = (date: string, today: string, trackingStart: string): boolean =>
-  date <= today && date >= trackingStart
+export const shouldShowDateDot = (date: string, today: string, trackingStart: string, record?: DayRecord): boolean =>
+  date <= today && date >= trackingStart && hasAnyCheckin(record)

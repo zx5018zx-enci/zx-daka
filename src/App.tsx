@@ -230,7 +230,7 @@ function CalendarModal({ selected, records, today, trackingStart, onSelect, onCl
         {cells.map((day, index) => {
           if (!day) return <span key={`blank-${index}`} />
           const date = formatDate(new Date(year, monthIndex, day))
-          const showDot = shouldShowDateDot(date, today, trackingStart)
+          const showDot = shouldShowDateDot(date, today, trackingStart, records[date])
           return (
             <button key={date} className={`${date === selected ? 'selected' : ''} ${date === today ? 'today' : ''}`} onClick={() => { onSelect(date); onClose() }}>
               {day}
@@ -655,7 +655,9 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             <div className="stat-card stat-card-total">
               <div className="stat-card-heading"><span aria-hidden="true">总</span><strong>累计打卡</strong></div>
               <div className="stat-card-value"><b>{stats.cumulativeDays}</b><span>天</span></div>
-              <p>当前是第 <strong>{stats.currentDayNumber}</strong> 天</p>
+              {stats.currentChecked
+                ? <p>当前是第 <strong>{stats.currentDayNumber}</strong> 天</p>
+                : <p>这一天还没有打卡</p>}
             </div>
           </div>
         </div>
@@ -673,7 +675,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           <div className="date-strip">
             {weekDates.map((date) => {
               const parsed = parseDate(date)
-              const showDot = shouldShowDateDot(date, today, stats.trackingStart)
+              const showDot = shouldShowDateDot(date, today, stats.trackingStart, visibleRecords[date])
               return <button key={date} className={`${date === selected ? 'active' : ''} ${date === today ? 'is-today' : ''}`} onClick={() => setSelected(date)}><span>{WEEKDAYS[parsed.getDay()]}</span><strong>{parsed.getDate()}</strong>{showDot ? <i className={isDayComplete(visibleRecords[date]) ? 'complete' : 'incomplete'} /> : null}</button>
             })}
           </div>
