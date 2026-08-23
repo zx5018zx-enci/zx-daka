@@ -1,5 +1,6 @@
 import { requireUser } from './auth.mts'
 import { allowOrReject } from './limits.mts'
+import { sanitizeRecords } from './records.mts'
 import { readRecords, readUserByCode } from './store.mts'
 
 const json = (body: unknown, status = 200) =>
@@ -28,6 +29,6 @@ export const getProfile = async (request: Request): Promise<Response> => {
 
   return json({
     profile: { displayName: target.displayName, userCode: target.userCode },
-    records: await readRecords(target.id),
+    records: sanitizeRecords({ records: await readRecords(target.id) }),
   })
 }

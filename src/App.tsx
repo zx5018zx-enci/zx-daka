@@ -24,11 +24,66 @@ type User = {
 
 type SharedProfile = Pick<User, 'displayName' | 'userCode'> & { records: Records }
 type GroupMember = Pick<User, 'displayName' | 'userCode'> & { checked: boolean }
-type ModalName = 'calendar' | 'weight' | 'chart' | 'lookup' | 'group' | 'photo' | 'exercise' | 'food' | null
+type GroupResponse = { members: GroupMember[]; commonCheckinDays: number }
+type EntryKind = 'exercise' | 'food' | 'drink'
+type LogKey = 'exercises' | 'foods' | 'drinks'
+type LineIconName = 'activity' | 'calendar' | 'eye' | 'flame' | 'lock' | 'meal' | 'scale' | 'tooth' | 'water'
+type ModalName = 'calendar' | 'weight' | 'chart' | 'lookup' | 'group' | 'photo' | EntryKind | null
 type SyncState = 'loading' | 'saving' | 'saved' | 'error'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 const LEGACY_STORAGE_KEY = 'light-checkin-data'
+const WEIGHT_CHART_POINT_LIMIT = 30
+const ENTRY_CONFIG: Record<EntryKind, {
+  logKey: LogKey
+  modalTitle: string
+  nameLabel: string
+  namePlaceholder: string
+  amountLabel: string
+  amountPlaceholder: string
+  icon: LineIconName
+  eyebrow: string
+  cardTitle: string
+  emptyText: string
+  recommendation?: string
+}> = {
+  exercise: {
+    logKey: 'exercises', modalTitle: '今天动了什么？', nameLabel: '运动名称',
+    namePlaceholder: '例如：慢跑', amountLabel: '时长或数量', amountPlaceholder: '例如：30 分钟 / 3 公里',
+    icon: 'activity', eyebrow: '运动记录', cardTitle: '今天动一动', emptyText: '轻轻动一下，也很了不起',
+  },
+  food: {
+    logKey: 'foods', modalTitle: '今天吃了什么？', nameLabel: '食物名称',
+    namePlaceholder: '例如：番茄炒蛋', amountLabel: '吃了多少', amountPlaceholder: '例如：一小碗 / 200 克',
+    icon: 'meal', eyebrow: '饮食记录', cardTitle: '好好吃每一餐', emptyText: '记下吃过的，了解自己的节奏',
+  },
+  drink: {
+    logKey: 'drinks', modalTitle: '今天喝了什么？', nameLabel: '喝了什么',
+    namePlaceholder: '例如：白开水', amountLabel: '喝了多少', amountPlaceholder: '例如：2 升 / 500 毫升',
+    icon: 'water', eyebrow: '喝水记录', cardTitle: '及时补充水分', emptyText: '记下喝过的，照顾身体的需要',
+    recommendation: '推荐：白开水约 2 升/天',
+  },
+}
+
+const ICON_PATHS: Record<LineIconName, ReactNode> = {
+  activity: <><path d="M4 17l4-5 3 2 3-5 6 4" /><path d="M6 20h12" /><circle cx="15" cy="5" r="2" /></>,
+  calendar: <><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M8 3v4M16 3v4M4 10h16M8 14h3M13 14h3" /></>,
+  eye: <><path d="M3.5 12s3-5 8.5-5 8.5 5 8.5 5-3 5-8.5 5-8.5-5-8.5-5z" /><circle cx="12" cy="12" r="2.3" /></>,
+  flame: <path d="M13.5 3.5c.6 3-1.8 4.2-1.8 6.3 0 1.2.8 2 1.8 2.7-.2-2.4 1.5-3.6 2.7-5.1 1.8 2 3.3 4.3 3.3 7A7.5 7.5 0 116.8 9c.3 2.5 1.6 3.8 2.8 4.7-.5-4.5 1.1-7.8 3.9-10.2z" />,
+  meal: <><path d="M5 13c1.8-4.5 5.2-7 10.4-7 1.5 0 2.7.2 3.6.6-.6 5.9-4 9.1-9.5 9.1-1.8 0-3.3-.5-4.5-1.4" /><path d="M4 20c1.7-4.4 5.3-7.5 10.3-9.8" /></>,
+  lock: <><rect x="5" y="10" width="14" height="10" rx="3" /><path d="M8 10V7a4 4 0 018 0v3M12 14v2" /></>,
+  scale: <><path d="M5 7.5A3.5 3.5 0 018.5 4h7A3.5 3.5 0 0119 7.5V19H5z" /><path d="M9 8.5a3 3 0 016 0M12 8.5l1.8-1.5" /></>,
+  tooth: <path d="M8.2 3.8c1.4 0 2.3.7 3.8.7s2.4-.7 3.8-.7c2.6 0 4.2 2 4.2 4.8 0 2.2-1 4-1.8 5.8-1.1 2.5-1.6 5.8-3.3 5.8-1.4 0-1.3-4.9-2.9-4.9s-1.5 4.9-2.9 4.9c-1.7 0-2.2-3.3-3.3-5.8C5 12.6 4 10.8 4 8.6c0-2.8 1.6-4.8 4.2-4.8z" />,
+  water: <path d="M12 3.5c3 4 5.3 7 5.3 10.1A5.3 5.3 0 016.7 13.6C6.7 10.5 9 7.5 12 3.5z" />,
+}
+
+function LineIcon({ name }: { name: LineIconName }) {
+  return (
+    <svg className="line-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {ICON_PATHS[name]}
+    </svg>
+  )
+}
 
 const request = async <T,>(url: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(url, {
@@ -77,6 +132,7 @@ const sanitizeRecords = (value: unknown): Records => {
           : null,
       exercises: sanitizeItems(record.exercises),
       foods: sanitizeItems(record.foods),
+      drinks: sanitizeItems(record.drinks),
       brushMorning: record.brushMorning === true,
       brushEvening: record.brushEvening === true,
     }
@@ -145,8 +201,8 @@ function ModalHeading({ eyebrow, title, onClose }: { eyebrow: string; title: str
   )
 }
 
-function EntryModal({ kind, item, onSave, onClose }: { kind: 'exercise' | 'food'; item?: LogItem; onSave: (item: LogItem) => void; onClose: () => void }) {
-  const isExercise = kind === 'exercise'
+function EntryModal({ kind, item, onSave, onClose }: { kind: EntryKind; item?: LogItem; onSave: (item: LogItem) => void; onClose: () => void }) {
+  const config = ENTRY_CONFIG[kind]
   const [name, setName] = useState(item?.name ?? '')
   const [amount, setAmount] = useState(item?.amount ?? '')
   const [error, setError] = useState('')
@@ -162,15 +218,15 @@ function EntryModal({ kind, item, onSave, onClose }: { kind: 'exercise' | 'food'
 
   return (
     <Modal onClose={onClose}>
-      <ModalHeading eyebrow={item ? '修改记录' : '添加记录'} title={isExercise ? '今天动了什么？' : '今天吃了什么？'} onClose={onClose} />
+      <ModalHeading eyebrow={item ? '修改记录' : '添加记录'} title={config.modalTitle} onClose={onClose} />
       <form className="entry-form" onSubmit={submit}>
         <label>
-          {isExercise ? '运动名称' : '食物名称'}
-          <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder={isExercise ? '例如：慢跑' : '例如：番茄炒蛋'} maxLength={30} />
+          {config.nameLabel}
+          <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder={config.namePlaceholder} maxLength={30} />
         </label>
         <label>
-          {isExercise ? '时长或数量' : '吃了多少'}
-          <input value={amount} onChange={(event) => setAmount(event.target.value)} placeholder={isExercise ? '例如：30 分钟 / 3 公里' : '例如：一小碗 / 200 克'} maxLength={30} />
+          {config.amountLabel}
+          <input value={amount} onChange={(event) => setAmount(event.target.value)} placeholder={config.amountPlaceholder} maxLength={30} />
         </label>
         {error ? <p className="form-error">{error}</p> : null}
         <button className="primary-button" type="submit">保存记录</button>
@@ -323,7 +379,7 @@ function GroupModal({ members, loading, onSave, onClose }: { members: GroupMembe
   return (
     <Modal onClose={onClose}>
       <ModalHeading eyebrow="一起坚持的人" title="同行成员" onClose={onClose} />
-      <p className="group-modal-intro">输入对方的用户码。关联后，你们当天的打卡状态会共同点亮月亮。</p>
+      <p className="group-modal-intro">输入对方的用户码，任意一方添加即可同步关联；任意一方取消，双方都会解除关联。重新关联不会丢失过去的共同打卡记录。</p>
       <form className="group-add-form" onSubmit={addMember}>
         <input className="code-input" aria-label="成员用户码" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="输入 8 位用户码" maxLength={8} />
         <button className="primary-button" type="submit" disabled={saving || loading}>{saving ? '保存中…' : '添加'}</button>
@@ -335,7 +391,7 @@ function GroupModal({ members, loading, onSave, onClose }: { members: GroupMembe
             <div key={member.userCode}>
               <span className={member.checked ? 'checked' : ''}>{member.checked ? '✓' : ''}</span>
               <p><strong>{member.displayName}</strong><small>{member.userCode} · {member.checked ? '今天已打卡' : '今天未打卡'}</small></p>
-              <button type="button" disabled={saving} onClick={() => removeMember(member)}>移除</button>
+              <button type="button" disabled={saving} onClick={() => removeMember(member)}>取消关联</button>
             </div>
           ))}
         </div>
@@ -344,7 +400,7 @@ function GroupModal({ members, loading, onSave, onClose }: { members: GroupMembe
   )
 }
 
-function GroupMoon({ members, selfChecked, onOpen }: { members: GroupMember[]; selfChecked: boolean; onOpen: () => void }) {
+function GroupMoon({ members, selfChecked, commonCheckinDays, onOpen }: { members: GroupMember[]; selfChecked: boolean; commonCheckinDays: number; onOpen: () => void }) {
   if (members.length === 0) return null
   const total = members.length + 1
   const checkedCount = Number(selfChecked) + members.filter((member) => member.checked).length
@@ -356,11 +412,12 @@ function GroupMoon({ members, selfChecked, onOpen }: { members: GroupMember[]; s
       : `还差 ${total - checkedCount} 人，月亮就圆满了`
 
   return (
-    <button className={`group-moon-panel ${phase}`} onClick={onOpen} aria-label={`同行打卡：${checkedCount}/${total} 人已完成`}>
+    <button className={`group-moon-panel ${phase}`} onClick={onOpen} aria-label={`同行打卡：${checkedCount}/${total} 人已完成，共同打卡 ${commonCheckinDays} 天`}>
       <span className="group-moon-picture" aria-hidden="true" />
       <span className="group-moon-copy">
         <small>同行月相 · 每 30 秒更新</small>
         <strong><b>{checkedCount}</b> / {total} 人今天已打卡</strong>
+        <span className="group-common-days">共同打卡 <b>{commonCheckinDays}</b> 天</span>
         <em>{message}</em>
       </span>
       <span className="group-member-dots" aria-hidden="true">
@@ -373,8 +430,29 @@ function GroupMoon({ members, selfChecked, onOpen }: { members: GroupMember[]; s
   )
 }
 
+type WeightPoint = { date: string; value: number }
+type ChartCoordinate = WeightPoint & { x: number; y: number }
+
+const svgNumber = (value: number) => Math.round(value * 100) / 100
+
+const buildSmoothPath = (points: ChartCoordinate[]): string => {
+  if (points.length === 0) return ''
+  if (points.length === 1) return `M ${svgNumber(points[0].x)} ${svgNumber(points[0].y)}`
+
+  return points.slice(0, -1).reduce((path, point, index) => {
+    const next = points[index + 1]
+    const previous = points[index - 1] ?? point
+    const afterNext = points[index + 2] ?? next
+    const firstControlX = point.x + (next.x - previous.x) / 6
+    const firstControlY = point.y + (next.y - previous.y) / 6
+    const secondControlX = next.x - (afterNext.x - point.x) / 6
+    const secondControlY = next.y - (afterNext.y - point.y) / 6
+    return `${path} C ${svgNumber(firstControlX)} ${svgNumber(firstControlY)}, ${svgNumber(secondControlX)} ${svgNumber(secondControlY)}, ${svgNumber(next.x)} ${svgNumber(next.y)}`
+  }, `M ${svgNumber(points[0].x)} ${svgNumber(points[0].y)}`)
+}
+
 function WeightChartModal({ records, onClose }: { records: Records; onClose: () => void }) {
-  const points = Object.entries(records)
+  const points: WeightPoint[] = Object.entries(records)
     .filter((entry): entry is [string, DayRecord & { weight: number }] => entry[1].weight !== null)
     .map(([date, record]) => ({ date, value: record.weight }))
     .sort((left, right) => left.date.localeCompare(right.date))
@@ -391,6 +469,37 @@ function WeightChartModal({ records, onClose }: { records: Records; onClose: () 
         ? `较上次上升 ${recentChange} 斤`
         : '与上次持平'
 
+  const chartPoints = points.slice(-WEIGHT_CHART_POINT_LIMIT)
+  const chartWidth = 720
+  const chartHeight = 290
+  const chartPadding = { top: 32, right: 24, bottom: 44, left: 54 }
+  const plotWidth = chartWidth - chartPadding.left - chartPadding.right
+  const plotHeight = chartHeight - chartPadding.top - chartPadding.bottom
+  const values = chartPoints.map((point) => point.value)
+  const smallestValue = values.length > 0 ? Math.min(...values) : 0
+  const largestValue = values.length > 0 ? Math.max(...values) : 0
+  const valuePadding = Math.max((largestValue - smallestValue) * 0.18, 0.5)
+  const chartMin = smallestValue - valuePadding
+  const chartMax = largestValue + valuePadding
+  const chartRange = chartMax - chartMin
+  const firstTime = chartPoints[0] ? parseDate(chartPoints[0].date).getTime() : 0
+  const lastTime = chartPoints.at(-1) ? parseDate(chartPoints.at(-1)!.date).getTime() : firstTime
+  const timeRange = lastTime - firstTime
+  const coordinates: ChartCoordinate[] = chartPoints.map((point) => ({
+    ...point,
+    x: chartPoints.length === 1
+      ? chartPadding.left + plotWidth / 2
+      : chartPadding.left + ((parseDate(point.date).getTime() - firstTime) / timeRange) * plotWidth,
+    y: chartPadding.top + ((chartMax - point.value) / chartRange) * plotHeight,
+  }))
+  const linePath = buildSmoothPath(coordinates)
+  const axisLabelIndexes = new Set(
+    chartPoints.length <= 6
+      ? chartPoints.map((_, index) => index)
+      : [0, Math.floor((chartPoints.length - 1) / 2), chartPoints.length - 1],
+  )
+  const gridValues = Array.from({ length: 5 }, (_, index) => chartMax - (chartRange * index) / 4)
+
   return (
     <Modal onClose={onClose} wide>
       <ModalHeading eyebrow="一路走来的变化" title="历史体重" onClose={onClose} />
@@ -401,8 +510,47 @@ function WeightChartModal({ records, onClose }: { records: Records; onClose: () 
             <div><span>累计变化</span><strong className={totalChange <= 0 ? 'good' : ''}>{totalChange > 0 ? '+' : ''}{totalChange}<small> 斤</small></strong></div>
             <div><span>近期趋势</span><strong className={recentChange !== null && recentChange <= 0 ? 'good' : ''}>{recentText}</strong></div>
           </div>
+          <div className="chart-wrap">
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-labelledby="weight-chart-title weight-chart-description">
+              <title id="weight-chart-title">最近 {chartPoints.length} 次体重变化曲线</title>
+              <desc id="weight-chart-description">从 {chartPoints[0].date} 的 {chartPoints[0].value} 斤，到 {chartPoints.at(-1)!.date} 的 {chartPoints.at(-1)!.value} 斤。</desc>
+              <defs>
+                <linearGradient id="weight-area-gradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#7fa38b" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="#7fa38b" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              {gridValues.map((value, index) => {
+                const y = chartPadding.top + (plotHeight * index) / 4
+                return (
+                  <g key={value}>
+                    <line className="grid-line" x1={chartPadding.left} y1={y} x2={chartWidth - chartPadding.right} y2={y} />
+                    <text className="axis-text" x={chartPadding.left - 9} y={y + 3} textAnchor="end">{value.toFixed(1)}</text>
+                  </g>
+                )
+              })}
+              {coordinates.length > 1 ? (
+                <path className="weight-area" d={`${linePath} L ${svgNumber(coordinates.at(-1)!.x)} ${chartPadding.top + plotHeight} L ${svgNumber(coordinates[0].x)} ${chartPadding.top + plotHeight} Z`} />
+              ) : null}
+              <path className="weight-line" d={linePath} />
+              {coordinates.map((point, index) => (
+                <g key={point.date}>
+                  <circle className="weight-dot" cx={point.x} cy={point.y} r={5}>
+                    <title>{point.date}：{point.value} 斤</title>
+                  </circle>
+                  {(coordinates.length <= 6 || index === coordinates.length - 1) ? (
+                    <text className="value-label" x={point.x} y={point.y - 11} textAnchor="middle">{point.value}</text>
+                  ) : null}
+                  {axisLabelIndexes.has(index) ? (
+                    <text className="axis-text" x={point.x} y={chartHeight - 15} textAnchor="middle">{Number(point.date.slice(5, 7))}/{Number(point.date.slice(8, 10))}</text>
+                  ) : null}
+                </g>
+              ))}
+            </svg>
+            <p className="chart-window-note">曲线展示最近 {chartPoints.length} 次记录</p>
+          </div>
           <div className="weight-history-list">
-            {points.slice(-12).reverse().map((point) => <div key={point.date}><span>{point.date}</span><strong>{point.value} 斤</strong></div>)}
+            {points.slice(-WEIGHT_CHART_POINT_LIMIT).reverse().map((point) => <div key={point.date}><span>{point.date}</span><strong>{point.value} 斤</strong></div>)}
           </div>
           <p className="chart-note">共记录 {points.length} 次 · 体重单位：斤</p>
         </>
@@ -413,20 +561,24 @@ function WeightChartModal({ records, onClose }: { records: Records; onClose: () 
   )
 }
 
-function ContentCard({ kind, items, readOnly, onAdd, onEdit, onDelete }: { kind: 'exercise' | 'food'; items: LogItem[]; readOnly: boolean; onAdd: () => void; onEdit: (item: LogItem) => void; onDelete: (item: LogItem) => void }) {
-  const exercise = kind === 'exercise'
+function ContentCard({ kind, items, readOnly, onAdd, onEdit, onDelete }: { kind: EntryKind; items: LogItem[]; readOnly: boolean; onAdd: () => void; onEdit: (item: LogItem) => void; onDelete: (item: LogItem) => void }) {
+  const config = ENTRY_CONFIG[kind]
   return (
     <section className={`content-card ${kind}-card`}>
       <div className="card-heading">
         <div className="heading-with-icon">
-          <span className="card-emoji">{exercise ? '🏃' : '🥗'}</span>
-          <div><p>{exercise ? '运动记录' : '饮食记录'}</p><h2>{exercise ? '今天动一动' : '好好吃每一餐'}</h2></div>
+          <span className="card-icon"><LineIcon name={config.icon} /></span>
+          <div>
+            <p>{config.eyebrow}</p>
+            <h2>{config.cardTitle}</h2>
+            {config.recommendation ? <small className="card-recommendation">{config.recommendation}</small> : null}
+          </div>
         </div>
         {!readOnly ? <button className="add-button" onClick={onAdd}>＋ 添加</button> : null}
       </div>
       {items.length === 0 ? (
         <button className="empty-state" onClick={onAdd} disabled={readOnly}>
-          <span>{exercise ? '轻轻动一下，也很了不起' : '记下吃过的，了解自己的节奏'}</span>
+          <span>{config.emptyText}</span>
           <small>{readOnly ? '这一天还没有记录' : '点击添加第一条记录'}</small>
         </button>
       ) : (
@@ -434,7 +586,15 @@ function ContentCard({ kind, items, readOnly, onAdd, onEdit, onDelete }: { kind:
           {items.map((item) => (
             <li key={item.id}>
               <div><strong>{item.name}</strong><span>{item.amount}</span></div>
-              {!readOnly ? <div className="item-actions"><button onClick={() => onEdit(item)}>编辑</button><button className="delete-button" onClick={() => onDelete(item)}>删除</button></div> : null}
+              {!readOnly ? (
+                <details className="item-menu">
+                  <summary aria-label={`${item.name}的更多操作`}>•••</summary>
+                  <div>
+                    <button type="button" onClick={() => onEdit(item)}>编辑</button>
+                    <button type="button" className="delete-button" onClick={() => onDelete(item)}>删除</button>
+                  </div>
+                </details>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -483,7 +643,7 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: User) => void }
             <button className="primary-button" type="submit" disabled={loading}>{loading ? '请稍候…' : mode === 'login' ? '登录' : '注册并进入'}</button>
           </form>
           <button className="auth-switch" onClick={() => { setMode((current) => current === 'login' ? 'register' : 'login'); setError('') }}>{mode === 'login' ? '还没有账号？立即注册' : '已经有账号？返回登录'}</button>
-          <p className="privacy-note">🔒 你的密码经过加密保存，打卡记录只有登录后才能修改。</p>
+          <p className="privacy-note"><LineIcon name="lock" />你的密码经过加密保存，打卡记录只有登录后才能修改。</p>
         </div>
       </section>
     </main>
@@ -493,9 +653,9 @@ function AuthPage({ onAuthenticated }: { onAuthenticated: (user: User) => void }
 const demoRecords = (): Records => {
   const today = formatDate(new Date())
   return {
-    [shiftDate(today, -2)]: { weight: 128.2, exercises: [{ id: 'demo-1', name: '慢跑', amount: '30 分钟' }], foods: [{ id: 'demo-2', name: '家常饭', amount: '三餐' }], brushMorning: true, brushEvening: true },
-    [shiftDate(today, -1)]: { weight: 127.8, exercises: [{ id: 'demo-3', name: '散步', amount: '25 分钟' }], foods: [], brushMorning: true, brushEvening: false },
-    [today]: { weight: 127.5, exercises: [{ id: 'demo-4', name: '跳绳', amount: '15 分钟' }], foods: [{ id: 'demo-5', name: '清淡饮食', amount: '三餐' }], brushMorning: true, brushEvening: true },
+    [shiftDate(today, -2)]: { weight: 128.2, exercises: [{ id: 'demo-1', name: '慢跑', amount: '30 分钟' }], foods: [{ id: 'demo-2', name: '家常饭', amount: '三餐' }], drinks: [{ id: 'demo-6', name: '白开水', amount: '2 升' }], brushMorning: true, brushEvening: true },
+    [shiftDate(today, -1)]: { weight: 127.8, exercises: [{ id: 'demo-3', name: '散步', amount: '25 分钟' }], foods: [], drinks: [{ id: 'demo-7', name: '白开水', amount: '1.5 升' }], brushMorning: true, brushEvening: false },
+    [today]: { weight: 127.5, exercises: [{ id: 'demo-4', name: '跳绳', amount: '15 分钟' }], foods: [{ id: 'demo-5', name: '清淡饮食', amount: '三餐' }], drinks: [{ id: 'demo-8', name: '白开水', amount: '2 升' }], brushMorning: true, brushEvening: true },
   }
 }
 
@@ -515,9 +675,11 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [showImport, setShowImport] = useState(false)
   const [syncState, setSyncState] = useState<SyncState>(demoMode ? 'saved' : 'loading')
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>(demoMode && !demoWithoutGroup ? DEMO_GROUP : [])
+  const [commonCheckinDays, setCommonCheckinDays] = useState(demoMode && !demoWithoutGroup ? 2 : 0)
   const [groupLoading, setGroupLoading] = useState(!demoMode)
   const [sharedProfile, setSharedProfile] = useState<SharedProfile | null>(null)
   const [selected, setSelected] = useState(today)
+  const [weekCenter, setWeekCenter] = useState(today)
   const [modal, setModal] = useState<ModalName>(null)
   const [editingItem, setEditingItem] = useState<LogItem>()
   const [toast, setToast] = useState('')
@@ -529,13 +691,14 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     () => getCheckinStats(visibleRecords, today, selected),
     [visibleRecords, today, selected],
   )
-  const weekDates = Array.from({ length: 7 }, (_, index) => shiftDate(selected, index - 3))
+  const weekDates = Array.from({ length: 7 }, (_, index) => shiftDate(weekCenter, index - 3))
 
   const refreshGroup = useCallback(async () => {
     if (demoMode) return
     try {
-      const result = await request<{ members: GroupMember[] }>(`/api/groups?date=${today}`)
+      const result = await request<GroupResponse>(`/api/groups?date=${today}`)
       setGroupMembers(result.members)
+      setCommonCheckinDays(result.commonCheckinDays)
     } catch {
       // The group endpoint is additive; existing check-in flows stay available if it is temporarily unavailable.
     } finally {
@@ -599,33 +762,47 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     setRecords((current) => ({ ...current, [selected]: updater(current[selected] ?? createEmptyRecord()) }))
     setToast(message)
   }
-  const openEntry = (kind: 'exercise' | 'food', item?: LogItem) => { setEditingItem(item); setModal(kind) }
-  const saveEntry = (kind: 'exercise' | 'food', item: LogItem) => {
-    const key = kind === 'exercise' ? 'exercises' : 'foods'
+  const openEntry = (kind: EntryKind, item?: LogItem) => { setEditingItem(item); setModal(kind) }
+  const saveEntry = (kind: EntryKind, item: LogItem) => {
+    const key = ENTRY_CONFIG[kind].logKey
     updateRecord((record) => {
-      const items = record[key]
+      const items = record[key] ?? []
       const exists = items.some((entry) => entry.id === item.id)
       return { ...record, [key]: exists ? items.map((entry) => entry.id === item.id ? item : entry) : [...items, item] }
     })
     setModal(null)
     setEditingItem(undefined)
   }
-  const deleteEntry = (kind: 'exercise' | 'food', item: LogItem) => {
+  const deleteEntry = (kind: EntryKind, item: LogItem) => {
     if (!window.confirm(`确定删除“${item.name}”吗？`)) return
-    const key = kind === 'exercise' ? 'exercises' : 'foods'
-    updateRecord((record) => ({ ...record, [key]: record[key].filter((entry) => entry.id !== item.id) }), '记录已删除')
+    const key = ENTRY_CONFIG[kind].logKey
+    updateRecord((record) => ({ ...record, [key]: (record[key] ?? []).filter((entry) => entry.id !== item.id) }), '记录已删除')
+  }
+  const shiftVisibleWeek = (days: number) => {
+    setWeekCenter((current) => shiftDate(current, days))
+    setSelected((current) => shiftDate(current, days))
+  }
+  const selectFromCalendar = (date: string) => {
+    setSelected(date)
+    setWeekCenter(date)
+  }
+  const returnToToday = () => {
+    setSelected(today)
+    setWeekCenter(today)
   }
   const saveGroupCodes = async (codes: string[]) => {
     if (demoMode) {
       setGroupMembers((current) => codes.map((code) => current.find((member) => member.userCode === code) ?? { displayName: `同行 ${code.slice(-2)}`, userCode: code, checked: false }))
+      setCommonCheckinDays(codes.length > 0 ? 2 : 0)
       return
     }
-    const result = await request<{ members: GroupMember[] }>(`/api/groups?date=${today}`, {
+    const result = await request<GroupResponse>(`/api/groups?date=${today}`, {
       method: 'PUT',
       body: JSON.stringify({ codes }),
     })
     if (result.members.length < codes.length) throw new Error('没有找到该用户码，请检查后重试')
     setGroupMembers(result.members)
+    setCommonCheckinDays(result.commonCheckinDays)
   }
   const selectedDate = parseDate(selected)
   const displayDate = selected === today ? '今天' : `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日`
@@ -643,17 +820,17 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           <span className={`sync-state ${syncState}`}>{syncState === 'loading' ? '加载中' : syncState === 'saving' ? '同步中' : syncState === 'error' ? '同步失败' : '已同步'}</span>
           <button className="logout-button" onClick={async () => { if (!demoMode) await request('/api/auth/logout', { method: 'POST', body: '{}' }).catch(() => undefined); onLogout() }}>退出</button>
         </div>
-        {sharedProfile ? <div className="viewing-banner"><span>👀 正在查看 <strong>{sharedProfile.displayName}</strong> 的记录</span><button onClick={() => setSharedProfile(null)}>返回我的记录</button></div> : null}
+        {sharedProfile ? <div className="viewing-banner"><span><LineIcon name="eye" />正在查看 <strong>{sharedProfile.displayName}</strong> 的记录</span><button onClick={() => setSharedProfile(null)}>返回我的记录</button></div> : null}
         <div className="hero-copy" id="top">
           <div><p className="hero-kicker">{sharedProfile ? `用户码 ${sharedProfile.userCode} · 只读查看` : '慢慢来，也是一种前进'}</p><h1>{displayDate}，<br /><em>照顾好自己。</em></h1></div>
           <div className="checkin-stats">
             <div className="stat-card stat-card-streak">
-              <div className="stat-card-heading"><span aria-hidden="true">🔥</span><strong>连续打卡</strong></div>
+              <div className="stat-card-heading"><span aria-hidden="true"><LineIcon name="flame" /></span><strong>连续打卡</strong></div>
               <div className="stat-card-value"><b>{stats.streak}</b><span>天</span></div>
               <p>当前连续记录</p>
             </div>
             <div className="stat-card stat-card-total">
-              <div className="stat-card-heading"><span aria-hidden="true">总</span><strong>累计打卡</strong></div>
+              <div className="stat-card-heading"><span aria-hidden="true"><LineIcon name="calendar" /></span><strong>累计打卡</strong></div>
               <div className="stat-card-value"><b>{stats.cumulativeDays}</b><span>天</span></div>
               {stats.currentChecked
                 ? <p>当前是第 <strong>{stats.currentDayNumber}</strong> 天</p>
@@ -661,17 +838,17 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             </div>
           </div>
         </div>
-        <div className="progress-card">
-          <div className="progress-copy"><span>{selected === today ? '今日完成度' : '当日完成度'}</span><strong>{count}<small> / 5 项</small></strong></div>
-          <div className="progress-track"><i style={{ width: `${count * 20}%` }} /></div>
-          <p>{count === 5 ? '全部完成，今天的你真棒！' : count === 0 ? '从一件小事开始记录吧' : `再完成 ${5 - count} 项，给今天一个漂亮的句号`}</p>
+        <div className={`progress-card ${count === 6 ? 'complete' : ''}`}>
+          <div className="progress-copy"><span>{selected === today ? '今日完成度' : '当日完成度'}</span><strong>{count}<small> / 6 项</small></strong></div>
+          <div className="progress-track"><i style={{ width: `${(count / 6) * 100}%` }} /></div>
+          <p>{count === 6 ? '全部完成，今天的你真棒！' : count === 0 ? '从一件小事开始记录吧' : `再完成 ${6 - count} 项，给今天一个漂亮的句号`}</p>
         </div>
       </header>
       <main>
-        {!sharedProfile ? <GroupMoon members={groupMembers} selfChecked={hasAnyCheckin(records[today])} onOpen={() => setModal('group')} /> : null}
+        {!sharedProfile ? <GroupMoon members={groupMembers} selfChecked={hasAnyCheckin(records[today])} commonCheckinDays={commonCheckinDays} onOpen={() => setModal('group')} /> : null}
         {showImport && !readOnly ? <section className="import-banner"><div><strong>发现这台设备上的旧记录</strong><p>要导入到“{user.displayName}”的云端账号吗？</p></div><div><button onClick={() => { localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false) }}>暂不导入</button><button className="import-primary" onClick={() => { setRecords(legacyRecords); localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false); setToast('旧记录已导入，正在同步到云端') }}>立即导入</button></div></section> : null}
         <section className="date-section" aria-label="日期选择">
-          <button className="date-arrow" onClick={() => setSelected(shiftDate(selected, -7))} aria-label="上一周">‹</button>
+          <button className="date-arrow" onClick={() => shiftVisibleWeek(-7)} aria-label="上一周">‹</button>
           <div className="date-strip">
             {weekDates.map((date) => {
               const parsed = parseDate(date)
@@ -679,24 +856,25 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
               return <button key={date} className={`${date === selected ? 'active' : ''} ${date === today ? 'is-today' : ''}`} onClick={() => setSelected(date)}><span>{WEEKDAYS[parsed.getDay()]}</span><strong>{parsed.getDate()}</strong>{showDot ? <i className={isDayComplete(visibleRecords[date]) ? 'complete' : 'incomplete'} /> : null}</button>
             })}
           </div>
-          <button className="date-arrow" onClick={() => setSelected(shiftDate(selected, 7))} aria-label="下一周">›</button>
+          <button className="date-arrow" onClick={() => shiftVisibleWeek(7)} aria-label="下一周">›</button>
         </section>
-        {selected !== today ? <button className="back-today" onClick={() => setSelected(today)}>回到今天</button> : null}
-        <section className="weight-card"><div className="weight-info"><span className="weight-icon">⚖</span><div><p>早晨体重</p>{currentRecord.weight === null ? <h2>还没有记录</h2> : <button className="weight-value" onClick={() => setModal('chart')}><strong>{currentRecord.weight}</strong><span>斤</span><small>查看趋势 ›</small></button>}</div></div>{!readOnly ? <button className="weight-action" onClick={() => setModal('weight')}>{currentRecord.weight === null ? '记录体重' : '修改'}</button> : null}</section>
+        {selected !== today ? <button className="back-today" onClick={returnToToday}>回到今天</button> : null}
+        <section className="weight-card"><div className="weight-info"><span className="weight-icon"><LineIcon name="scale" /></span><div><p>早晨体重</p>{currentRecord.weight === null ? <h2>还没有记录</h2> : <button className="weight-value" onClick={() => setModal('chart')}><strong>{currentRecord.weight}</strong><span>斤</span><small>查看趋势 ›</small></button>}</div></div>{!readOnly ? <button className="weight-action" onClick={() => setModal('weight')}>{currentRecord.weight === null ? '记录体重' : '修改'}</button> : null}</section>
         <div className="content-grid">
           <ContentCard kind="exercise" items={currentRecord.exercises} readOnly={readOnly} onAdd={() => openEntry('exercise')} onEdit={(item) => openEntry('exercise', item)} onDelete={(item) => deleteEntry('exercise', item)} />
           <ContentCard kind="food" items={currentRecord.foods} readOnly={readOnly} onAdd={() => openEntry('food')} onEdit={(item) => openEntry('food', item)} onDelete={(item) => deleteEntry('food', item)} />
+          <ContentCard kind="drink" items={currentRecord.drinks ?? []} readOnly={readOnly} onAdd={() => openEntry('drink')} onEdit={(item) => openEntry('drink', item)} onDelete={(item) => deleteEntry('drink', item)} />
         </div>
-        <section className="brush-card"><div className="card-heading"><div className="heading-with-icon"><span className="card-emoji">🪥</span><div><p>小小习惯</p><h2>今天有好好刷牙吗？</h2></div></div><span className="brush-count">{Number(currentRecord.brushMorning) + Number(currentRecord.brushEvening)} / 2</span></div><div className="brush-options"><button disabled={readOnly} className={currentRecord.brushMorning ? 'checked' : ''} onClick={() => updateRecord((record) => ({ ...record, brushMorning: !record.brushMorning }))}><span className="check-circle">{currentRecord.brushMorning ? '✓' : ''}</span><div><strong>早晨刷牙</strong><small>清清爽爽开启一天</small></div></button><button disabled={readOnly} className={currentRecord.brushEvening ? 'checked' : ''} onClick={() => updateRecord((record) => ({ ...record, brushEvening: !record.brushEvening }))}><span className="check-circle">{currentRecord.brushEvening ? '✓' : ''}</span><div><strong>晚上刷牙</strong><small>干干净净进入梦乡</small></div></button></div></section>
-        <footer><button className="footer-photo-button" onClick={() => setModal('photo')}><img src="/zx-footer-icon.png?v=1" alt="ZX 赵祥" /></button><p>每一个认真生活的日子，都值得被记住。——赵祥</p></footer>
+        <section className="brush-card"><div className="card-heading"><div className="heading-with-icon"><span className="card-icon"><LineIcon name="tooth" /></span><div><p>小小习惯</p><h2>今天有好好刷牙吗？</h2></div></div><span className="brush-count">{Number(currentRecord.brushMorning) + Number(currentRecord.brushEvening)} / 2</span></div><div className="brush-options"><button disabled={readOnly} className={currentRecord.brushMorning ? 'checked' : ''} onClick={() => updateRecord((record) => ({ ...record, brushMorning: !record.brushMorning }))}><span className="check-circle">{currentRecord.brushMorning ? '✓' : ''}</span><div><strong>早晨刷牙</strong><small>清清爽爽开启一天</small></div></button><button disabled={readOnly} className={currentRecord.brushEvening ? 'checked' : ''} onClick={() => updateRecord((record) => ({ ...record, brushEvening: !record.brushEvening }))}><span className="check-circle">{currentRecord.brushEvening ? '✓' : ''}</span><div><strong>晚上刷牙</strong><small>干干净净进入梦乡</small></div></button></div></section>
+        <footer><button className="footer-signature" onClick={() => setModal('photo')}><img src="/zx-footer-icon.png?v=1" alt="" /><span><strong>ZX 赵祥</strong><small>查看今日寄语</small></span></button><p>每一个认真生活的日子，都值得被记住。</p></footer>
       </main>
-      {modal === 'calendar' ? <CalendarModal selected={selected} records={visibleRecords} today={today} trackingStart={stats.trackingStart} onSelect={setSelected} onClose={() => setModal(null)} /> : null}
+      {modal === 'calendar' ? <CalendarModal selected={selected} records={visibleRecords} today={today} trackingStart={stats.trackingStart} onSelect={selectFromCalendar} onClose={() => setModal(null)} /> : null}
       {modal === 'weight' && !readOnly ? <WeightModal value={currentRecord.weight} onSave={(value) => { updateRecord((record) => ({ ...record, weight: value })); setModal(null) }} onClose={() => setModal(null)} /> : null}
       {modal === 'chart' ? <WeightChartModal records={visibleRecords} onClose={() => setModal(null)} /> : null}
       {modal === 'lookup' ? <LookupModal onFound={setSharedProfile} onClose={() => setModal(null)} /> : null}
       {modal === 'group' ? <GroupModal members={groupMembers} loading={groupLoading} onSave={saveGroupCodes} onClose={() => setModal(null)} /> : null}
       {modal === 'photo' ? <Modal onClose={() => setModal(null)} wide><ModalHeading eyebrow="ZX 赵祥" title="今天必须开心幸福！" onClose={() => setModal(null)} /><figure className="photo-preview"><img src="/zx-zhaoxiang-photo.png?v=1" alt="ZX 赵祥运动主题高清图" /><figcaption>今天必须开心幸福！</figcaption></figure></Modal> : null}
-      {(modal === 'exercise' || modal === 'food') ? <EntryModal kind={modal} item={editingItem} onSave={(item) => saveEntry(modal, item)} onClose={() => { setModal(null); setEditingItem(undefined) }} /> : null}
+      {(modal === 'exercise' || modal === 'food' || modal === 'drink') ? <EntryModal kind={modal} item={editingItem} onSave={(item) => saveEntry(modal, item)} onClose={() => { setModal(null); setEditingItem(undefined) }} /> : null}
       {toast ? <div className="toast" role="status"><span>✓</span>{toast}</div> : null}
     </div>
   )

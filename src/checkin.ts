@@ -8,6 +8,7 @@ export type DayRecord = {
   weight: number | null
   exercises: LogItem[]
   foods: LogItem[]
+  drinks: LogItem[]
   brushMorning: boolean
   brushEvening: boolean
 }
@@ -18,6 +19,7 @@ export const EMPTY_RECORD: DayRecord = {
   weight: null,
   exercises: [],
   foods: [],
+  drinks: [],
   brushMorning: false,
   brushEvening: false,
 }
@@ -26,6 +28,7 @@ export const createEmptyRecord = (): DayRecord => ({
   ...EMPTY_RECORD,
   exercises: [],
   foods: [],
+  drinks: [],
 })
 
 export const hasAnyCheckin = (record?: DayRecord): boolean =>
@@ -34,6 +37,7 @@ export const hasAnyCheckin = (record?: DayRecord): boolean =>
       (record.weight !== null ||
         record.exercises.length > 0 ||
         record.foods.length > 0 ||
+        Boolean(record.drinks?.length) ||
         record.brushMorning ||
         record.brushEvening),
   )
@@ -44,6 +48,7 @@ export const isDayComplete = (record?: DayRecord): boolean =>
       record.weight !== null &&
       record.exercises.length > 0 &&
       record.foods.length > 0 &&
+      Boolean(record.drinks?.length) &&
       record.brushMorning &&
       record.brushEvening,
   )
@@ -53,6 +58,7 @@ export const completionCount = (record: DayRecord): number =>
     record.weight !== null,
     record.exercises.length > 0,
     record.foods.length > 0,
+    Boolean(record.drinks?.length),
     record.brushMorning,
     record.brushEvening,
   ].filter(Boolean).length

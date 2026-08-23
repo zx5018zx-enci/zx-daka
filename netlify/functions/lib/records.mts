@@ -40,6 +40,7 @@ export const sanitizeRecords = (value: unknown): Records => {
           : null,
       exercises: sanitizeItems(record.exercises),
       foods: sanitizeItems(record.foods),
+      drinks: sanitizeItems(record.drinks),
       brushMorning: record.brushMorning === true,
       brushEvening: record.brushEvening === true,
     }
@@ -50,7 +51,7 @@ export const sanitizeRecords = (value: unknown): Records => {
 export const getRecords = async (request: Request): Promise<Response> => {
   const result = await requireUser(request)
   if (result instanceof Response) return result
-  return json({ records: await readRecords(result.id) })
+  return json({ records: sanitizeRecords({ records: await readRecords(result.id) }) })
 }
 
 export const putRecords = async (request: Request): Promise<Response> => {

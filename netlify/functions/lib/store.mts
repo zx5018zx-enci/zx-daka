@@ -6,6 +6,7 @@ export type DayRecord = {
   weight: number | null
   exercises: LogItem[]
   foods: LogItem[]
+  drinks: LogItem[]
   brushMorning: boolean
   brushEvening: boolean
 }
