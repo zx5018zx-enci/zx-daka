@@ -1,68 +1,44 @@
-import type { Config, Context } from '@netlify/functions'
+import type { Config } from '@netlify/functions'
+import { login, logout, me, register } from './lib/auth.mts'
+import { getProfile } from './lib/profile.mts'
+import { getRecords, putRecords } from './lib/records.mts'
 
-const LEGACY_DEPLOY_ORIGIN = 'https://6a3cbb2bf41ce7e99e12f0d1--zx-wj.netlify.app'
+const json = (body: unknown, status = 200) =>
+  Response.json(body, {
+    status,
+    headers: { 'cache-control': 'no-store' },
+  })
 
-const HOP_BY_HOP_HEADERS = [
-  'connection',
-  'content-encoding',
-  'content-length',
-  'host',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-]
-
-export default async (request: Request, _context: Context) => {
-  const incomingUrl = new URL(request.url)
-  const targetUrl = new URL(`${incomingUrl.pathname}${incomingUrl.search}`, LEGACY_DEPLOY_ORIGIN)
-  const requestHeaders = new Headers(request.headers)
-
-  HOP_BY_HOP_HEADERS.forEach((header) => requestHeaders.delete(header))
-  requestHeaders.delete('accept-encoding')
-
-  // The legacy backend validates Origin/Referer against its own host. Rewrite
-  // same-site values so the browser-facing domain still passes the check, and
-  // leave cross-site values untouched so the legacy CSRF guard keeps working.
-  const rewriteUrl = (value: string | null): string | null => {
-    if (!value) return value
-    try {
-      const url = new URL(value)
-      if (url.origin !== incomingUrl.origin) return value
-      return new URL(url.pathname + url.search, LEGACY_DEPLOY_ORIGIN).toString()
-    } catch {
-      return value
-    }
+const isCrossSite = (request: Request): boolean => {
+  const origin = request.headers.get('origin')
+  if (!origin) return false
+  try {
+    return new URL(origin).origin !== new URL(request.url).origin
+  } catch {
+    return true
   }
-  const origin = rewriteUrl(requestHeaders.get('origin'))
-  const referer = rewriteUrl(requestHeaders.get('referer'))
-  if (origin) requestHeaders.set('origin', origin)
-  else requestHeaders.delete('origin')
-  if (referer) requestHeaders.set('referer', referer)
-  else requestHeaders.delete('referer')
+}
 
-  const response = await fetch(targetUrl, {
-    method: request.method,
-    headers: requestHeaders,
-    body: request.method === 'GET' || request.method === 'HEAD'
-      ? undefined
-      : await request.arrayBuffer(),
-    redirect: 'manual',
-  })
-  const responseHeaders = new Headers(response.headers)
+export default async (request: Request) => {
+  if (isCrossSite(request)) {
+    return json({ error: '请求来源无效' }, 403)
+  }
 
-  HOP_BY_HOP_HEADERS.forEach((header) => responseHeaders.delete(header))
-  responseHeaders.set('cache-control', 'no-store')
-  responseHeaders.set('x-zx-backend', 'legacy-bridge')
-
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: responseHeaders,
-  })
+  const path = new URL(request.url).pathname
+  try {
+    if (path === '/api/auth/register' && request.method === 'POST') return await register(request)
+    if (path === '/api/auth/login' && request.method === 'POST') return await login(request)
+    if (path === '/api/auth/logout' && request.method === 'POST') return await logout(request)
+    if (path === '/api/auth/me' && request.method === 'GET') return await me(request)
+    if (path === '/api/records' && request.method === 'GET') return await getRecords(request)
+    if (path === '/api/records' && request.method === 'PUT') return await putRecords(request)
+    if (path === '/api/profile' && request.method === 'GET') return await getProfile(request)
+    if (path.startsWith('/api/')) return json({ error: '接口不存在' }, 404)
+    return json({ error: 'Not found' }, 404)
+  } catch (error) {
+    console.error(error)
+    return json({ error: '服务器开小差了，请稍后重试' }, 500)
+  }
 }
 
 export const config: Config = {
