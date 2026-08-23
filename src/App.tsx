@@ -24,7 +24,7 @@ type User = {
 
 type SharedProfile = Pick<User, 'displayName' | 'userCode'> & { records: Records }
 type GroupMember = Pick<User, 'displayName' | 'userCode'> & { checked: boolean }
-type GroupResponse = { members: GroupMember[]; commonCheckinDays: number }
+type GroupResponse = { members: GroupMember[]; commonCheckinDays: number; currentCommonCheckinDay: number }
 type EntryKind = 'exercise' | 'food' | 'drink'
 type LogKey = 'exercises' | 'foods' | 'drinks'
 type LineIconName = 'activity' | 'calendar' | 'eye' | 'flame' | 'lock' | 'meal' | 'scale' | 'tooth' | 'water'
@@ -400,24 +400,28 @@ function GroupModal({ members, loading, onSave, onClose }: { members: GroupMembe
   )
 }
 
-function GroupMoon({ members, selfChecked, commonCheckinDays, onOpen }: { members: GroupMember[]; selfChecked: boolean; commonCheckinDays: number; onOpen: () => void }) {
+function GroupMoon({ members, selfChecked, commonCheckinDays, currentCommonCheckinDay, selectedIsToday, onOpen }: { members: GroupMember[]; selfChecked: boolean; commonCheckinDays: number; currentCommonCheckinDay: number; selectedIsToday: boolean; onOpen: () => void }) {
   if (members.length === 0) return null
   const total = members.length + 1
   const checkedCount = Number(selfChecked) + members.filter((member) => member.checked).length
   const phase = checkedCount === 0 ? 'empty' : checkedCount === total ? 'full' : 'partial'
+  const dateLabel = selectedIsToday ? '今天' : '当日'
   const message = phase === 'full'
-    ? '全员完成，今晚月色正圆'
+    ? `全员完成，${selectedIsToday ? '今晚月色正圆' : '当日月色正圆'}`
     : phase === 'empty'
-      ? '今天还没有人打卡'
+      ? `${dateLabel}还没有人打卡`
       : `还差 ${total - checkedCount} 人，月亮就圆满了`
 
   return (
-    <button className={`group-moon-panel ${phase}`} onClick={onOpen} aria-label={`同行打卡：${checkedCount}/${total} 人已完成，共同打卡 ${commonCheckinDays} 天`}>
+    <button className={`group-moon-panel ${phase}`} onClick={onOpen} aria-label={`同行打卡：${checkedCount}/${total} 人${dateLabel}已完成，截至所选日期共同打卡第 ${currentCommonCheckinDay} 天，累计共同打卡 ${commonCheckinDays} 天`}>
       <span className="group-moon-picture" aria-hidden="true" />
       <span className="group-moon-copy">
-        <small>同行月相 · 每 30 秒更新</small>
-        <strong><b>{checkedCount}</b> / {total} 人今天已打卡</strong>
-        <span className="group-common-days">共同打卡 <b>{commonCheckinDays}</b> 天</span>
+        <small>同行月相 · {selectedIsToday ? '每 30 秒更新' : '历史记录'}</small>
+        <strong><b>{checkedCount}</b> / {total} 人{dateLabel}已打卡</strong>
+        <span className="group-day-stats">
+          <span className="group-current-day">当前第 <b>{currentCommonCheckinDay}</b> 天</span>
+          <span className="group-common-days">共同打卡 <b>{commonCheckinDays}</b> 天</span>
+        </span>
         <em>{message}</em>
       </span>
       <span className="group-member-dots" aria-hidden="true">
@@ -669,13 +673,22 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const demoParams = new URLSearchParams(window.location.search)
   const demoMode = import.meta.env.DEV && demoParams.has('demo')
   const demoWithoutGroup = demoMode && demoParams.get('group') === 'none'
+  const demoFullGroup = demoMode && demoParams.get('group') === 'full'
+  const demoCelebration = demoMode && demoParams.has('celebrate')
   const [legacyRecords] = useState(loadLegacyRecords)
   const [records, setRecords] = useState<Records>(() => demoMode ? demoRecords() : {})
   const [loaded, setLoaded] = useState(demoMode)
   const [showImport, setShowImport] = useState(false)
   const [syncState, setSyncState] = useState<SyncState>(demoMode ? 'saved' : 'loading')
-  const [groupMembers, setGroupMembers] = useState<GroupMember[]>(demoMode && !demoWithoutGroup ? DEMO_GROUP : [])
-  const [commonCheckinDays, setCommonCheckinDays] = useState(demoMode && !demoWithoutGroup ? 2 : 0)
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>(() =>
+    demoMode && !demoWithoutGroup
+      ? DEMO_GROUP.map((member) => demoFullGroup ? { ...member, checked: true } : member)
+      : [],
+  )
+  const [commonCheckinDays, setCommonCheckinDays] = useState(
+    demoMode && !demoWithoutGroup ? (demoFullGroup ? 3 : 2) : 0,
+  )
+  const [currentCommonCheckinDay, setCurrentCommonCheckinDay] = useState(0)
   const [groupLoading, setGroupLoading] = useState(!demoMode)
   const [sharedProfile, setSharedProfile] = useState<SharedProfile | null>(null)
   const [selected, setSelected] = useState(today)
@@ -687,24 +700,34 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const readOnly = sharedProfile !== null
   const currentRecord = visibleRecords[selected] ?? EMPTY_RECORD
   const count = completionCount(currentRecord)
+  const previousCompletion = useRef({ selected, count })
+  const demoCelebrationPlayed = useRef(false)
   const stats = useMemo(
     () => getCheckinStats(visibleRecords, today, selected),
     [visibleRecords, today, selected],
   )
   const weekDates = Array.from({ length: 7 }, (_, index) => shiftDate(weekCenter, index - 3))
+  const demoCommonCheckinDates = [shiftDate(today, -2), shiftDate(today, -1), ...(demoFullGroup ? [today] : [])]
+  const displayedCurrentCommonDay = demoMode
+    ? demoCommonCheckinDates.filter((date) => date <= selected).length
+    : currentCommonCheckinDay
+  const displayedGroupMembers = demoMode && selected !== today
+    ? groupMembers.map((member) => ({ ...member, checked: demoCommonCheckinDates.includes(selected) }))
+    : groupMembers
 
   const refreshGroup = useCallback(async () => {
     if (demoMode) return
     try {
-      const result = await request<GroupResponse>(`/api/groups?date=${today}`)
+      const result = await request<GroupResponse>(`/api/groups?date=${selected}&today=${today}`)
       setGroupMembers(result.members)
       setCommonCheckinDays(result.commonCheckinDays)
+      setCurrentCommonCheckinDay(result.currentCommonCheckinDay)
     } catch {
       // The group endpoint is additive; existing check-in flows stay available if it is temporarily unavailable.
     } finally {
       setGroupLoading(false)
     }
-  }, [demoMode, today])
+  }, [demoMode, selected, today])
 
   useEffect(() => {
     void refreshGroup()
@@ -754,9 +777,26 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   useEffect(() => {
     if (!toast) return
-    const timer = window.setTimeout(() => setToast(''), 1800)
+    const timer = window.setTimeout(() => setToast(''), toast.includes('全部完成') ? 2800 : 1800)
     return () => window.clearTimeout(timer)
   }, [toast])
+
+  useEffect(() => {
+    const previous = previousCompletion.current
+    previousCompletion.current = { selected, count }
+    const completedNow = previous.selected === selected && previous.count < 6 && count === 6
+    const previewCelebration = demoCelebration && !demoCelebrationPlayed.current && count === 6
+    if (!completedNow && !previewCelebration) return
+    const celebrate = () => {
+      demoCelebrationPlayed.current = true
+      setToast(`${selected === today ? '今天' : '当日'} 6 项全部完成，太棒了！`)
+    }
+    const previewTimer = previewCelebration ? window.setTimeout(celebrate, 650) : 0
+    if (!previewCelebration) celebrate()
+    return () => {
+      if (previewTimer) window.clearTimeout(previewTimer)
+    }
+  }, [count, demoCelebration, selected])
 
   const updateRecord = (updater: (record: DayRecord) => DayRecord, message = '已自动保存') => {
     setRecords((current) => ({ ...current, [selected]: updater(current[selected] ?? createEmptyRecord()) }))
@@ -803,6 +843,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     if (result.members.length < codes.length) throw new Error('没有找到该用户码，请检查后重试')
     setGroupMembers(result.members)
     setCommonCheckinDays(result.commonCheckinDays)
+    setCurrentCommonCheckinDay(result.currentCommonCheckinDay)
   }
   const selectedDate = parseDate(selected)
   const displayDate = selected === today ? '今天' : `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日`
@@ -841,11 +882,14 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         <div className={`progress-card ${count === 6 ? 'complete' : ''}`}>
           <div className="progress-copy"><span>{selected === today ? '今日完成度' : '当日完成度'}</span><strong>{count}<small> / 6 项</small></strong></div>
           <div className="progress-track"><i style={{ width: `${(count / 6) * 100}%` }} /></div>
-          <p>{count === 6 ? '全部完成，今天的你真棒！' : count === 0 ? '从一件小事开始记录吧' : `再完成 ${6 - count} 项，给今天一个漂亮的句号`}</p>
+          <div className="progress-result" aria-live="polite">
+            {count === 6 ? <strong className="completion-badge"><span aria-hidden="true">✓</span> {selected === today ? '今日' : '当日'}已完成</strong> : null}
+            <p>{count === 6 ? `${selected === today ? '今天' : '当天'}的你真棒！` : count === 0 ? '从一件小事开始记录吧' : `再完成 ${6 - count} 项，给${selected === today ? '今天' : '当天'}一个漂亮的句号`}</p>
+          </div>
         </div>
       </header>
       <main>
-        {!sharedProfile ? <GroupMoon members={groupMembers} selfChecked={hasAnyCheckin(records[today])} commonCheckinDays={commonCheckinDays} onOpen={() => setModal('group')} /> : null}
+        {!sharedProfile ? <GroupMoon members={displayedGroupMembers} selfChecked={hasAnyCheckin(records[selected])} commonCheckinDays={commonCheckinDays} currentCommonCheckinDay={displayedCurrentCommonDay} selectedIsToday={selected === today} onOpen={() => setModal('group')} /> : null}
         {showImport && !readOnly ? <section className="import-banner"><div><strong>发现这台设备上的旧记录</strong><p>要导入到“{user.displayName}”的云端账号吗？</p></div><div><button onClick={() => { localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false) }}>暂不导入</button><button className="import-primary" onClick={() => { setRecords(legacyRecords); localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false); setToast('旧记录已导入，正在同步到云端') }}>立即导入</button></div></section> : null}
         <section className="date-section" aria-label="日期选择">
           <button className="date-arrow" onClick={() => shiftVisibleWeek(-7)} aria-label="上一周">‹</button>
@@ -875,7 +919,12 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       {modal === 'group' ? <GroupModal members={groupMembers} loading={groupLoading} onSave={saveGroupCodes} onClose={() => setModal(null)} /> : null}
       {modal === 'photo' ? <Modal onClose={() => setModal(null)} wide><ModalHeading eyebrow="ZX 赵祥" title="今天必须开心幸福！" onClose={() => setModal(null)} /><figure className="photo-preview"><img src="/zx-zhaoxiang-photo.png?v=1" alt="ZX 赵祥运动主题高清图" /><figcaption>今天必须开心幸福！</figcaption></figure></Modal> : null}
       {(modal === 'exercise' || modal === 'food' || modal === 'drink') ? <EntryModal kind={modal} item={editingItem} onSave={(item) => saveEntry(modal, item)} onClose={() => { setModal(null); setEditingItem(undefined) }} /> : null}
-      {toast ? <div className="toast" role="status"><span>✓</span>{toast}</div> : null}
+      {toast ? <div className={`toast ${toast.includes('全部完成') ? 'completion-toast' : ''}`} role="status">
+        <span>✓</span>
+        {toast.includes('全部完成')
+          ? <div><strong>{toast.startsWith('当日') ? '当日' : '今日'} 6 项全部完成</strong><small>所有项目都打卡了，做得真棒！</small></div>
+          : toast}
+      </div> : null}
     </div>
   )
 }

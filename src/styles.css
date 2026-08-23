@@ -330,6 +330,9 @@ nav {
   font-style: normal;
 }
 .progress-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   max-width: 1040px;
   margin: auto;
   padding: 18px 22px;
@@ -340,6 +343,15 @@ nav {
   grid-template-columns: 125px 1fr auto;
   gap: 18px;
   align-items: center;
+}
+.progress-card > * {
+  position: relative;
+  z-index: 1;
+}
+.progress-card.complete {
+  background: rgba(242, 249, 238, .94);
+  border-color: rgba(122, 159, 123, .38);
+  box-shadow: 0 12px 30px rgba(72, 112, 80, .11);
 }
 .progress-copy {
   display: flex;
@@ -366,6 +378,11 @@ nav {
   border-radius: 99px;
   background: #dfe8de;
 }
+.progress-card.complete .progress-track {
+  height: 11px;
+  background: #d9e7d7;
+  box-shadow: inset 0 1px 2px rgba(54, 89, 62, .12);
+}
 .progress-track i {
   display: block;
   height: 100%;
@@ -377,8 +394,33 @@ nav {
       #9abb8f);
   transition: width .42s var(--ease-out);
 }
-.progress-card.complete .progress-track i {
-  animation: completion-glow .62s var(--ease-out);
+.progress-track i {
+  position: relative;
+  overflow: hidden;
+}
+.progress-result {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.completion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #315d40;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.completion-badge span {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fffdf7;
+  background: #548064;
+  box-shadow: 0 4px 10px rgba(61, 104, 73, .2);
 }
 .progress-card p {
   margin: 0;
@@ -1399,6 +1441,57 @@ footer p {
   font-weight: 700;
   animation: toast-check .42s var(--ease-out);
 }
+.completion-toast {
+  width: min(360px, calc(100vw - 32px));
+  min-height: 72px;
+  padding: 13px 18px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(229, 204, 126, .55);
+  border-radius: 18px;
+  background: #284131f5;
+  box-shadow: 0 18px 46px rgba(26, 54, 37, .34), 0 0 0 1px rgba(255, 255, 255, .08) inset;
+  animation: completion-toast-in .46s var(--ease-out);
+}
+.completion-toast:after {
+  content: "";
+  position: absolute;
+  top: -85%;
+  bottom: -85%;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(90deg, transparent, rgba(255, 232, 155, .52), rgba(255, 255, 255, .68), transparent);
+  transform: translateX(-170%) rotate(10deg);
+  animation: completion-toast-sheen 1.7s .18s var(--ease-out);
+}
+.completion-toast > span {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  color: #315d40;
+  background: #f1dda0;
+  font-size: 18px;
+}
+.completion-toast > div {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+.completion-toast strong {
+  font-size: 14px;
+  letter-spacing: .02em;
+}
+.completion-toast small {
+  color: rgba(239, 246, 238, .78);
+  font-size: 11px;
+}
 .app-loading {
   min-height: 100vh;
   display: grid;
@@ -1602,13 +1695,24 @@ footer p {
   0% { opacity: 0; transform: scale(.45) rotate(-12deg); }
   70% { transform: scale(1.12) rotate(2deg); }
 }
-@keyframes completion-glow {
-  0% { filter: brightness(1); box-shadow: 0 0 0 rgba(139, 180, 139, 0); }
-  55% { filter: brightness(1.12); box-shadow: 0 0 16px rgba(139, 180, 139, .48); }
-}
 @keyframes moon-complete {
-  0% { transform: scale(.96); filter: brightness(.92); }
-  65% { transform: scale(1.035); filter: brightness(1.12); }
+  0% { transform: scale(.94); filter: brightness(.88); }
+  62% { transform: scale(1.06); filter: brightness(1.22); }
+}
+@keyframes completion-toast-in {
+  0% { opacity: 0; transform: translate(-50%, 18px) scale(.96); }
+  70% { transform: translate(-50%, -2px) scale(1.01); }
+}
+@keyframes completion-toast-sheen {
+  to { transform: translateX(420%) rotate(10deg); }
+}
+@keyframes moon-panel-complete {
+  0% { box-shadow: 0 2px 3px rgba(57, 91, 67, .05), 0 18px 42px rgba(57, 91, 67, .13); }
+  55% { box-shadow: 0 4px 8px rgba(168, 126, 41, .14), 0 22px 54px rgba(216, 179, 83, .38); }
+}
+@keyframes moon-sheen {
+  from { transform: translateX(-120%) rotate(8deg); }
+  to { transform: translateX(140%) rotate(8deg); }
 }
 @media (min-width: 680px) {
   .modal-backdrop {
@@ -1660,8 +1764,11 @@ footer p {
     grid-template-columns: 100px 1fr;
     gap: 12px;
   }
-  .progress-card p {
+  .progress-result {
     grid-column: 1 / -1;
+    justify-content: space-between;
+  }
+  .progress-card p {
     white-space: normal;
   }
   main {
@@ -2016,6 +2123,27 @@ footer p {
   background-image: radial-gradient(rgba(54, 92, 67, .45) .55px, transparent .75px);
   background-size: 8px 8px;
 }
+.group-moon-panel.full {
+  border-color: rgba(181, 140, 48, .32);
+  background:
+    radial-gradient(circle at 14% 34%, rgba(255, 228, 151, .58), transparent 28%),
+    linear-gradient(120deg, #faf8e9, #edf3e1 58%, #dcebdd);
+  box-shadow: 0 3px 6px rgba(95, 83, 50, .08), 0 20px 48px rgba(181, 145, 56, .2);
+  animation: moon-panel-complete 1.15s var(--ease-out);
+}
+.group-moon-panel.full:before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: -45%;
+  bottom: -45%;
+  left: 0;
+  width: 24%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 247, 205, .76), transparent);
+  transform: translateX(-120%) rotate(8deg);
+  animation: moon-sheen 1.1s var(--ease-out);
+}
 @media (hover: hover) {
   .group-moon-panel:hover {
     transform: translateY(-2px);
@@ -2057,12 +2185,12 @@ footer p {
 .group-moon-panel.partial .group-moon-picture { background-position-x: 50%; }
 .group-moon-panel.full .group-moon-picture {
   background-position-x: 93.5%;
-  animation: moon-complete .72s var(--ease-out);
+  animation: moon-complete 1.08s var(--ease-out);
   box-shadow:
-    0 0 0 5px rgba(255, 253, 235, .72),
-    0 0 0 6px rgba(180, 139, 56, .2),
+    0 0 0 5px rgba(255, 253, 235, .86),
+    0 0 0 7px rgba(180, 139, 56, .28),
     0 12px 32px rgba(81, 91, 63, .2),
-    0 0 40px rgba(255, 224, 154, .55);
+    0 0 52px rgba(255, 211, 102, .72);
 }
 .group-moon-copy {
   position: relative;
@@ -2089,9 +2217,15 @@ footer p {
   font-feature-settings: "tnum" 1;
   font-size: 25px;
 }
+.group-day-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.group-current-day,
 .group-common-days {
   width: fit-content;
-  margin-top: 7px;
   padding: 5px 9px;
   border: 1px solid rgba(153, 119, 43, .28);
   border-radius: 10px 10px 10px 4px;
@@ -2101,6 +2235,13 @@ footer p {
   font-size: 10px;
   letter-spacing: .04em;
 }
+.group-current-day {
+  color: #496758;
+  border-color: rgba(76, 119, 90, .22);
+  background: rgba(239, 247, 237, .88);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .72), 0 5px 14px rgba(75, 111, 82, .08);
+}
+.group-current-day b,
 .group-common-days b {
   color: var(--moon-gold);
   font-variant-numeric: tabular-nums lining-nums;

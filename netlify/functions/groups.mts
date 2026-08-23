@@ -224,18 +224,18 @@ const isDateWithinHistory = (date: string, history: RelationshipHistory) =>
     (period) => date >= period.startedOn && (!period.endedOn || date <= period.endedOn),
   )
 
-const countCommonCheckinDays = (
+const getCommonCheckinDates = (
   records: Records[],
   histories: RelationshipHistory[],
-): number => {
-  if (records.length < 2) return 0
+): string[] => {
+  if (records.length < 2) return []
   const [first, ...rest] = records
   return Object.keys(first).filter(
     (date) =>
       histories.every((history) => isDateWithinHistory(date, history)) &&
       isCheckedIn(first[date]) &&
       rest.every((memberRecords) => isCheckedIn(memberRecords[date])),
-  ).length
+  )
 }
 
 const readGroup = async (user: StoredUser, codes: string[], date: string) => {
@@ -260,14 +260,17 @@ const readGroup = async (user: StoredUser, codes: string[], date: string) => {
     checked: isCheckedIn(records[date]),
   }))
 
-  return {
-    members,
-    commonCheckinDays: members.length > 0
-      ? countCommonCheckinDays(
+  const commonCheckinDates = members.length > 0
+    ? getCommonCheckinDates(
           [selfRecords, ...validLinked.map(({ records }) => records)],
           validLinked.map(({ history }) => history),
         )
-      : 0,
+    : []
+
+  return {
+    members,
+    commonCheckinDays: commonCheckinDates.length,
+    currentCommonCheckinDay: commonCheckinDates.filter((commonDate) => commonDate <= date).length,
   }
 }
 
@@ -276,13 +279,15 @@ export default async (request: Request, _context: Context) => {
   if (result instanceof Response) return result
   const user = result
   const date = parseDate(request)
+  const requestedToday = new URL(request.url).searchParams.get('today') ?? ''
+  const relationshipFallbackDate = isDate(requestedToday) ? requestedToday : date
 
   try {
     await ensureReciprocalLegacyLinks(user)
 
     if (request.method === 'GET') {
       const codes = await readCodes(user.id, user.userCode)
-      await ensureActiveRelationshipHistory(user, codes, date)
+      await ensureActiveRelationshipHistory(user, codes, relationshipFallbackDate)
       return json(await readGroup(user, codes, date))
     }
 
