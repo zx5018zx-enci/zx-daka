@@ -2790,7 +2790,19 @@ main.daily-main { width: min(100%, 928px); max-width: none; margin: 0 auto; padd
   .dashboard-layout > .group-heart-panel .group-day-stats { gap: 4px; margin-top: 5px; }
   .dashboard-layout > .group-heart-panel .group-day-stats > span { padding: 3px 5px; font-size: 9px; }
   .dashboard-layout > .group-heart-panel .group-day-stats b { font-size: 11px; }
-  .date-strip button { height: 46px; border-radius: 12px; }
+  .date-strip button {
+    height: 46px;
+    border-radius: 12px;
+    display: grid;
+    grid-template-rows: 12px 18px 6px;
+    row-gap: 1px;
+    justify-items: center;
+    align-content: center;
+    padding: 4px;
+  }
+  .date-strip button > span { grid-row: 1; line-height: 12px; }
+  .date-strip button > strong { grid-row: 2; margin-top: 0; line-height: 18px; }
+  .date-strip button > i { grid-row: 3; position: static; align-self: center; }
   .date-strip button span { font-size: 10px; }
   .date-strip button strong { font-size: 15px; }
   .weight-card { min-height: 0; margin-top: 10px; padding: 13px 16px; gap: 6px; border-radius: 17px; }
