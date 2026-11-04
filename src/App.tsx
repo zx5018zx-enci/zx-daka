@@ -385,7 +385,7 @@ function GroupModal({ members, loading, onSave, onClose }: { members: GroupMembe
         <button className="primary-button" type="submit" disabled={saving || loading}>{saving ? '保存中…' : '添加'}</button>
       </form>
       {error ? <p className="form-error">{error}</p> : null}
-      {loading ? <p className="group-empty">正在同步成员状态…</p> : members.length === 0 ? <p className="group-empty">还没有同行成员，添加后页面才会显示月相。</p> : (
+      {loading ? <p className="group-empty">正在同步成员状态…</p> : members.length === 0 ? <p className="group-empty">还没有同行成员，添加后页面才会显示爱心。</p> : (
         <div className="group-member-list">
           {members.map((member) => (
             <div key={member.userCode}>
@@ -400,23 +400,59 @@ function GroupModal({ members, loading, onSave, onClose }: { members: GroupMembe
   )
 }
 
-function GroupMoon({ members, selfChecked, commonCheckinDays, currentCommonCheckinDay, selectedIsToday, onOpen }: { members: GroupMember[]; selfChecked: boolean; commonCheckinDays: number; currentCommonCheckinDay: number; selectedIsToday: boolean; onOpen: () => void }) {
+function GroupHeart({ members, selfChecked, commonCheckinDays, currentCommonCheckinDay, selectedIsToday, onOpen }: { members: GroupMember[]; selfChecked: boolean; commonCheckinDays: number; currentCommonCheckinDay: number; selectedIsToday: boolean; onOpen: () => void }) {
   if (members.length === 0) return null
   const total = members.length + 1
   const checkedCount = Number(selfChecked) + members.filter((member) => member.checked).length
   const phase = checkedCount === 0 ? 'empty' : checkedCount === total ? 'full' : 'partial'
   const dateLabel = selectedIsToday ? '今天' : '当日'
   const message = phase === 'full'
-    ? `全员完成，${selectedIsToday ? '今晚月色正圆' : '当日月色正圆'}`
+    ? '全员完成，爱心已点亮'
     : phase === 'empty'
       ? `${dateLabel}还没有人打卡`
-      : `还差 ${total - checkedCount} 人，月亮就圆满了`
+      : `还差 ${total - checkedCount} 人，爱心就点亮了`
 
   return (
-    <button className={`group-moon-panel ${phase}`} onClick={onOpen} aria-label={`同行打卡：${checkedCount}/${total} 人${dateLabel}已完成，截至所选日期共同打卡第 ${currentCommonCheckinDay} 天，累计共同打卡 ${commonCheckinDays} 天`}>
-      <span className="group-moon-picture" aria-hidden="true" />
-      <span className="group-moon-copy">
-        <small>同行月相 · {selectedIsToday ? '每 30 秒更新' : '历史记录'}</small>
+    <button className={`group-heart-panel ${phase}`} onClick={onOpen} aria-label={`同行打卡：${checkedCount}/${total} 人${dateLabel}已完成，截至所选日期共同打卡第 ${currentCommonCheckinDay} 天，累计共同打卡 ${commonCheckinDays} 天`}>
+      <span className="group-heart-picture" aria-hidden="true">
+        <svg viewBox="0 0 100 110" fill="none">
+          <defs>
+            <path id="group-heart-shape" d="M50 87C45 82 12 59 9 39C5 13 35 6 50 27C65 6 95 13 91 39C88 59 55 82 50 87Z" />
+            <clipPath id="group-heart-fill"><rect x="0" y="0" width={100 * checkedCount / total} height="100" /></clipPath>
+            <radialGradient id="group-heart-shell" cx=".3" cy=".2" r=".85">
+              <stop stopColor="#fff7f1" /><stop offset=".52" stopColor="#e9c9ca" /><stop offset="1" stopColor="#a97885" />
+            </radialGradient>
+            <radialGradient id="group-heart-ruby" cx=".3" cy=".17" r=".88">
+              <stop stopColor="#ffd5c6" /><stop offset=".25" stopColor="#ff8d99" /><stop offset=".56" stopColor="#ed4f73" /><stop offset=".82" stopColor="#ba2a54" /><stop offset="1" stopColor="#761d40" />
+            </radialGradient>
+            <linearGradient id="group-heart-rim" x1="14" y1="16" x2="74" y2="88" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#fff5df" /><stop offset=".45" stopColor="#ffb5bc" /><stop offset="1" stopColor="#a52d51" />
+            </linearGradient>
+            <radialGradient id="group-heart-reflection">
+              <stop stopColor="#fffdf2" stopOpacity=".95" /><stop offset="1" stopColor="#fff4df" stopOpacity="0" />
+            </radialGradient>
+            <filter id="group-heart-soft" x="-.5" y="-.5" width="2" height="2"><feGaussianBlur stdDeviation="2" /></filter>
+          </defs>
+          <ellipse className="group-heart-ground" cx="51" cy="99" rx="27" ry="4" fill="#882d48" filter="url(#group-heart-soft)" />
+          <g className="group-heart-object">
+            <use href="#group-heart-shape" transform="translate(0 3)" fill="#8b2948" />
+            <use href="#group-heart-shape" fill="url(#group-heart-shell)" />
+            <use href="#group-heart-shape" clipPath="url(#group-heart-fill)" fill="url(#group-heart-ruby)" />
+            <use href="#group-heart-shape" stroke="url(#group-heart-rim)" strokeWidth="1.3" />
+            <ellipse cx="28" cy="29" rx="13" ry="8" transform="rotate(-39 28 29)" fill="url(#group-heart-reflection)" />
+            <path d="M17 36C16 24 28 18 36 22" stroke="#fff9e8" strokeOpacity=".75" strokeWidth="2.4" strokeLinecap="round" />
+            <path d="M65 24C73 19 83 24 84 32" stroke="#ffe5d3" strokeOpacity=".5" strokeWidth="1.6" strokeLinecap="round" />
+            <path d="M73 63 53 80" stroke="#ffabb7" strokeOpacity=".5" strokeWidth="1.3" strokeLinecap="round" />
+          </g>
+          <g className="group-heart-sparks" fill="#fff6d9">
+            <path d="m87 9 1.5 4.5L93 15l-4.5 1.5L87 21l-1.5-4.5L81 15l4.5-1.5Z" />
+            <path d="m10 62 1 3L14 66l-3 1-1 3-1-3-3-1 3-1Z" />
+            <circle cx="79" cy="81" r="1.5" /><circle cx="9" cy="18" r="1" />
+          </g>
+        </svg>
+      </span>
+      <span className="group-heart-copy">
+        <small>同行爱心 · {selectedIsToday ? '每 30 秒更新' : '历史记录'}</small>
         <strong><b>{checkedCount}</b> / {total} 人{dateLabel}已打卡</strong>
         <span className="group-day-stats">
           <span className="group-current-day">当前第 <b>{currentCommonCheckinDay}</b> 天</span>
@@ -429,7 +465,7 @@ function GroupMoon({ members, selfChecked, commonCheckinDays, currentCommonCheck
         {members.slice(0, 5).map((member) => <i key={member.userCode} className={member.checked ? 'checked' : ''}>{member.displayName.slice(0, 1)}</i>)}
         {members.length > 5 ? <b>+{members.length - 5}</b> : null}
       </span>
-      <span className="group-moon-arrow">管理 ›</span>
+      <span className="group-heart-arrow">管理 ›</span>
     </button>
   )
 }
@@ -853,7 +889,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       <header className="hero">
         <nav>
           <button className="brand brand-button" onClick={() => setModal('photo')} aria-label="查看 ZX 赵祥高清图"><span>祥</span><strong>ZX打卡</strong></button>
-          <div className="nav-actions"><button className="group-button" onClick={() => setModal('group')}>☾ 同行</button><button className="find-user-button" onClick={() => setModal('lookup')}>⌕ 查用户</button><button className="calendar-button" onClick={() => setModal('calendar')}><span>▦</span> 月历</button></div>
+          <div className="nav-actions"><button className="group-button" onClick={() => setModal('group')}>♡ 同行</button><button className="find-user-button" onClick={() => setModal('lookup')}>⌕ 查用户</button><button className="calendar-button" onClick={() => setModal('calendar')}><span>▦</span> 月历</button></div>
         </nav>
         <div className="account-bar">
           <div className="account-person"><span>{user.displayName.slice(0, 1)}</span><div><strong>{user.displayName}</strong><small>@{user.username}</small></div></div>
@@ -889,7 +925,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         </div>
       </header>
       <main>
-        {!sharedProfile ? <GroupMoon members={displayedGroupMembers} selfChecked={hasAnyCheckin(records[selected])} commonCheckinDays={commonCheckinDays} currentCommonCheckinDay={displayedCurrentCommonDay} selectedIsToday={selected === today} onOpen={() => setModal('group')} /> : null}
+        {!sharedProfile ? <GroupHeart members={displayedGroupMembers} selfChecked={hasAnyCheckin(records[selected])} commonCheckinDays={commonCheckinDays} currentCommonCheckinDay={displayedCurrentCommonDay} selectedIsToday={selected === today} onOpen={() => setModal('group')} /> : null}
         {showImport && !readOnly ? <section className="import-banner"><div><strong>发现这台设备上的旧记录</strong><p>要导入到“{user.displayName}”的云端账号吗？</p></div><div><button onClick={() => { localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false) }}>暂不导入</button><button className="import-primary" onClick={() => { setRecords(legacyRecords); localStorage.setItem(`light-checkin-imported-${user.id}`, 'yes'); setShowImport(false); setToast('旧记录已导入，正在同步到云端') }}>立即导入</button></div></section> : null}
         <section className="date-section" aria-label="日期选择">
           <button className="date-arrow" onClick={() => shiftVisibleWeek(-7)} aria-label="上一周">‹</button>
