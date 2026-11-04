@@ -43,5 +43,5 @@ export default async (request: Request) => {
 
 export const config: Config = {
   path: '/api/*',
-  excludedPath: '/api/groups',
+  excludedPath: ['/api/groups', '/api/push'],
 }

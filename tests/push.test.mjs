@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 // In-memory storage and push transport: no notifications or remote data writes.
+assert.match(readFileSync('netlify/functions/api.mts', 'utf8'), /excludedPath:\s*\[\s*'\/api\/groups',\s*'\/api\/push'\s*\]/, 'API catch-all must exclude the push route')
 const data = new Map()
 let currentUser = { id: 'alice', userCode: 'ALICE001', displayName: '测试甲' }
 let deliveries = 0
